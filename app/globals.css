@@ -1,0 +1,90 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    /* Warna utama - hijau Kemenag */
+    --primary: 120 100% 25%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Warna secondary - hijau muda */
+    --secondary: 120 70% 90%;
+    --secondary-foreground: 120 100% 15%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    /* Warna accent - hijau accent */
+    --accent: 120 60% 40%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 120 100% 25%;
+
+    --radius: 0.5rem;
+
+    /* Custom colors for leave types */
+    --sick-leave: 142 69% 58%;
+    --maternity-leave: 36 100% 65%;
+    --unpaid-leave: 0 0% 15%;
+    --annual-leave: 14 100% 57%;
+    --important-leave: 214 100% 65%;
+    --extended-leave: 0 0% 85%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    /* Warna utama - hijau Kemenag (lebih terang di dark mode) */
+    --primary: 120 70% 40%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Warna secondary - hijau muda (lebih gelap di dark mode) */
+    --secondary: 120 30% 20%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    /* Warna accent - hijau accent */
+    --accent: 120 50% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 120 70% 40%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
