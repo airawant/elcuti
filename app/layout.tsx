@@ -9,6 +9,9 @@ export const metadata = {
   title: "EL-CUTI - Aplikasi Cuti Elektronik Kantor Kemenag Kota Tanjungpinang",
   description: "aplikasi cuti elektronik kantor kemenag kota tanjungpinang",
   generator: "Prakom",
+  icons: {
+    icon: "/logo.png",
+  },
 }
 
 export default function RootLayout({
