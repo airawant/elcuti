@@ -68,6 +68,44 @@ export default function DashboardPage() {
   const currentYear = new Date().getFullYear().toString();
   const previousYear = (new Date().getFullYear() - 1).toString();
 
+  // Hitung penggunaan cuti dari tabel leave_requests
+  const getUsedLeaveDays = () => {
+    const usedLeave = {
+      carryOver: 0,
+      currentYear: 0,
+      total: 0,
+    };
+
+    leaveRequests
+      .filter(
+        (req) =>
+          req.user_id === user.id && req.type === "Cuti Tahunan" && req.status !== "Rejected" // Hanya hitung yang Pending atau Approved
+      )
+      .forEach((req) => {
+        usedLeave.carryOver += req.used_carry_over_days || 0;
+        usedLeave.currentYear += req.used_current_year_days || 0;
+      });
+
+    usedLeave.total = usedLeave.carryOver + usedLeave.currentYear;
+    return usedLeave;
+  };
+
+  const usedLeaveDays = getUsedLeaveDays();
+
+  // Hitung sisa saldo aktual
+  const getRemainingBalance = () => {
+    const saldoTahunLalu = user.leave_balance?.[previousYear] || 0;
+    const saldoTahunIni = user.leave_balance?.[currentYear] || 0;
+
+    return {
+      carryOver: Math.max(0, saldoTahunLalu),
+      currentYear: Math.max(0, saldoTahunIni),
+      total: Math.max(0, saldoTahunLalu) + Math.max(0, saldoTahunIni),
+    };
+  };
+
+  const remainingBalance = getRemainingBalance();
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* Desktop sidebar */}
@@ -116,29 +154,50 @@ export default function DashboardPage() {
             {/* Card Saldo Carry-Over */}
             <div className="bg-white p-4 rounded-lg shadow-sm">
               <h3 className="text-sm text-gray-500">Saldo Cuti N-1 Tahun</h3>
-              <div className="text-3xl font-bold">
-                {user.leave_balance?.[previousYear] || 0}
-              </div>
+              <div className="text-3xl font-bold">{remainingBalance.carryOver} hari</div>
               <div className="text-sm text-gray-500">Dari Tahun {previousYear}</div>
+              <div className="mt-2">
+                <div className="text-sm text-red-500">
+                  Terpakai/Diproses: {usedLeaveDays.carryOver} hari
+                </div>
+                {/* <div className="text-sm text-green-500">
+                  Sisa Aktual:{" "}
+                  {Math.max(0, remainingBalance.carryOver - usedLeaveDays.carryOver)} hari
+                </div> */}
+              </div>
             </div>
 
             {/* Card Saldo Cuti Tahun Berjalan */}
             <div className="bg-white p-4 rounded-lg shadow-sm">
               <h3 className="text-sm text-gray-500">Saldo Cuti Tahun Ini</h3>
-              <div className="text-3xl font-bold">
-                {user.leave_balance?.[currentYear] || 0}
-              </div>
+              <div className="text-3xl font-bold">{remainingBalance.currentYear} hari</div>
               <div className="text-sm text-gray-500">Tahun {currentYear}</div>
+              <div className="mt-2">
+                <div className="text-sm text-red-500">
+                  Terpakai/Diproses: {usedLeaveDays.currentYear} hari
+                </div>
+                {/* <div className="text-sm text-green-500">
+                  Sisa Aktual:{" "}
+                  {Math.max(0, remainingBalance.currentYear - usedLeaveDays.currentYear)} hari
+                </div> */}
+              </div>
             </div>
 
             {/* Card Total Sisa Cuti */}
             <div className="bg-white p-4 rounded-lg shadow-sm">
               <h3 className="text-sm text-gray-500">Total Saldo Cuti</h3>
               <div className="text-3xl font-bold">
-                {(user.leave_balance?.[currentYear] || 0) +
-                  (user.leave_balance?.[previousYear] || 0)}
+                {remainingBalance.total} hari
               </div>
-              <div className="text-sm text-gray-500">Tersedia</div>
+              <div className="text-sm text-gray-500">Total Tersedia</div>
+              <div className="mt-2">
+                <div className="text-sm text-red-500">
+                  Total Terpakai/Diproses: {usedLeaveDays.total} hari
+                </div>
+                {/* <div className="text-sm text-green-500">
+                  Sisa Aktual: {Math.max(0, remainingBalance.total - usedLeaveDays.total)} hari
+                </div> */}
+              </div>
             </div>
           </div>
 

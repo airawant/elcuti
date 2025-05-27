@@ -26,6 +26,34 @@ import { LeaveBalanceInfo } from "@/components/leave-request/leave-balance-info"
 import { Badge } from "@/components/ui/badge";
 import { Pegawai } from "@/lib/supabase";
 
+interface LeaveRequestSubmission {
+  user_id: number;
+  type: string;
+  start_date: string;
+  end_date: string;
+  reason: string;
+  supervisor_id: number | null;
+  authorized_officer_id: number | null;
+  workingdays: number;
+  address: string;
+  phone: string;
+  status: string;
+  supervisor_status: string;
+  authorized_officer_status: string;
+  supervisor_viewed: boolean;
+  authorized_officer_viewed: boolean;
+  supervisor_signed: boolean;
+  authorized_officer_signed: boolean;
+  supervisor_signature_date: string | null;
+  authorized_officer_signature_date: string | null;
+  rejection_reason: string | null;
+  leave_year: number;
+  used_carry_over_days?: number;
+  used_current_year_days?: number;
+  saldo_carry: number;
+  saldo_current_year: number;
+}
+
 // Update the interface to include mode for different views
 interface LeaveRequestModalProps {
   isOpen: boolean;
@@ -694,7 +722,7 @@ export function LeaveRequestModal({
       }
 
       // Prepare data for submission
-      const submissionData = {
+      const submissionData: LeaveRequestSubmission = {
         user_id: user.id,
         type: formData.leaveType,
         start_date: formData.startDate,
@@ -702,7 +730,7 @@ export function LeaveRequestModal({
         reason: formData.leaveReason,
         supervisor_id: formData.supervisorId,
         authorized_officer_id: formData.authorizedOfficerId,
-        workingdays: workingDays, // Gunakan nilai yang sudah divalidasi
+        workingdays: workingDays,
         address: formData.address,
         phone: formData.phone,
         status: "Pending",
@@ -716,9 +744,47 @@ export function LeaveRequestModal({
         authorized_officer_signature_date: null,
         rejection_reason: null,
         leave_year: new Date(formData.startDate).getFullYear(),
-        used_carry_over_days: 0,
-        used_current_year_days: 0,
+        saldo_carry: carryOverBalance,
+        saldo_current_year: initialBalance,
       };
+
+      // Hitung penggunaan saldo cuti
+      if (formData.leaveType === "Cuti Tahunan") {
+        const currentYear = new Date(formData.startDate).getFullYear();
+        const previousYear = currentYear - 1;
+
+        // Ambil data user untuk mendapatkan saldo cuti
+        const targetUser = users.find((u) => u.id === user.id);
+        if (!targetUser || !targetUser.leave_balance) {
+          throw new Error("Data saldo cuti tidak tersedia");
+        }
+
+        const previousYearBalance = targetUser.leave_balance[previousYear.toString()] || 0;
+        let usedCarryOver = 0;
+        let usedCurrentYear = 0;
+
+        if (workingDays > 0) {
+          // Jika ada saldo tahun lalu, gunakan itu dulu
+          if (previousYearBalance > 0) {
+            usedCarryOver = Math.min(previousYearBalance, workingDays);
+            usedCurrentYear = Math.max(0, workingDays - usedCarryOver);
+          } else {
+            // Jika tidak ada saldo tahun lalu, gunakan saldo tahun ini
+            usedCurrentYear = workingDays;
+          }
+        }
+
+        // Tambahkan data penggunaan saldo ke submissionData
+        submissionData.used_carry_over_days = usedCarryOver;
+        submissionData.used_current_year_days = usedCurrentYear;
+
+        console.log("Detail penggunaan saldo:", {
+          workingDays,
+          previousYearBalance,
+          usedCarryOver,
+          usedCurrentYear
+        });
+      }
 
       console.log("Mengirim data permintaan cuti:", submissionData);
 
@@ -759,64 +825,49 @@ export function LeaveRequestModal({
   };
 
   // Handle approval/rejection by a supervisor
-  const handleSupervisorAction = (status: "Approved" | "Rejected") => {
-    if (!isValidSupervisor) {
+  const handleSupervisorAction = async (action: "Approved" | "Rejected") => {
+    try {
+      if (!requestData || !requestData.id) {
+        console.error("Invalid request data or missing ID:", requestData);
+        toast({
+          title: "Error",
+          description: "Data permintaan tidak valid. Silakan muat ulang halaman.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const approvalData = {
+        leaveRequestId: requestData.id,
+        action,
+        type: "supervisor",
+        rejectionReason: action === "Rejected" ? formData.rejectionReason : undefined,
+        signatureDate: action === "Approved" ? formData.supervisorSignatureDate : undefined,
+        signed: action === "Approved" ? formData.supervisorSigned : false,
+      };
+
+      // Tutup modal terlebih dahulu
+      onClose();
+
+      // Tampilkan toast bahwa proses sedang berjalan
       toast({
-        title: "Validasi diperlukan",
-        description: "Anda harus memvalidasi identitas Anda terlebih dahulu",
+        title: action === "Approved" ? "Menyetujui permintaan..." : "Menolak permintaan...",
+        description: "Proses akan dilanjutkan di latar belakang",
+      });
+
+      // Kirim data secara asynchronous
+      setTimeout(() => {
+        onSubmit(approvalData);
+      }, 100);
+
+    } catch (error) {
+      console.error("Error in supervisor action:", error);
+      toast({
+        title: "Gagal memproses permintaan",
+        description: "Terjadi kesalahan saat memproses permintaan cuti.",
         variant: "destructive",
       });
-      return;
     }
-
-    // Hanya cek tanda tangan jika status Approved
-    if (status === "Approved" && !formData.supervisorSigned) {
-      toast({
-        title: "Tanda tangan diperlukan",
-        description: "Anda harus menandatangani dokumen sebelum menyetujui",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (status === "Rejected" && !formData.rejectionReason && !showRejectionForm) {
-      setShowRejectionForm(true);
-      return;
-    }
-
-    // Check if a rejection reason is provided if rejecting
-    if (status === "Rejected" && !formData.rejectionReason) {
-      toast({
-        title: "Alasan penolakan diperlukan",
-        description: "Harap berikan alasan untuk penolakan permintaan cuti",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Verifikasi ID permintaan
-    if (!requestData || !requestData.id) {
-      console.error("Invalid request data or missing ID:", requestData);
-      toast({
-        title: "Error",
-        description: "Data permintaan tidak valid. Silakan muat ulang halaman.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Prepare data for submission
-    const approvalData = {
-      requestId: Number(requestData.id), // Memastikan requestId adalah number
-      approverType: "supervisor",
-      status: status,
-      rejectionReason: status === "Rejected" ? formData.rejectionReason : undefined,
-      signatureDate: status === "Approved" ? formData.supervisorSignatureDate : undefined,
-      signed: status === "Approved" ? formData.supervisorSigned : false,
-    };
-
-    console.log("Submitting supervisor approval data:", approvalData);
-    onSubmit(approvalData);
   };
 
   // Handle approval/rejection by an authorized officer
@@ -869,17 +920,27 @@ export function LeaveRequestModal({
 
     // Prepare data for submission
     const approvalData = {
-      requestId: Number(requestData.id), // Memastikan requestId adalah number
-      approverType: "authorized_officer",
-      status: status,
+      leaveRequestId: requestData.id,
+      action: status,
+      type: "authorized_officer",
       rejectionReason: status === "Rejected" ? formData.rejectionReason : undefined,
-      signatureDate:
-        status === "Approved" ? formData.authorizedOfficerSignatureDate : undefined,
+      signatureDate: status === "Approved" ? formData.authorizedOfficerSignatureDate : undefined,
       signed: status === "Approved" ? formData.authorizedOfficerSigned : false,
     };
 
-    console.log("Submitting authorized officer approval data:", approvalData);
-    onSubmit(approvalData);
+    // Tutup modal terlebih dahulu
+    onClose();
+
+    // Tampilkan toast bahwa proses sedang berjalan
+    toast({
+      title: status === "Approved" ? "Menyetujui permintaan..." : "Menolak permintaan...",
+      description: "Proses akan dilanjutkan di latar belakang",
+    });
+
+    // Kirim data secara asynchronous
+    setTimeout(() => {
+      onSubmit(approvalData);
+    }, 100);
   };
 
   // Render approval status component
@@ -1129,14 +1190,10 @@ export function LeaveRequestModal({
               <div className="bg-gray-100 px-4 py-2 font-medium">V. CATATAN CUTI</div>
               <div className="p-4">
                 <LeaveBalanceInfo
-                  initialBalance={initialBalance}
-                  carryOverBalance={carryOverBalance}
-                  remainingCarryOverBalance={remainingCarryOverBalance}
-                  remainingCurrentYearBalance={remainingCurrentYearBalance}
-                  remainingBalance={remainingBalance}
-                  workingdays={formData.workingdays}
+                  workingDays={formData.workingdays}
                   leaveType={formData.leaveType}
                   userId={user?.id}
+                  mode={mode}
                 />
               </div>
             </div>
@@ -1566,8 +1623,12 @@ export function LeaveRequestModal({
                       !formData.startDate ||
                       !formData.endDate ||
                       !formData.leaveReason ||
-                      (formData.leaveType === "Cuti Tahunan" &&
-                        formData.workingdays > remainingBalance)
+                      !formData.address ||
+                      !formData.phone ||
+                      (formData.leaveType === "Cuti Tahunan" && (
+                        formData.workingdays > remainingBalance ||
+                        formData.workingdays <= 0
+                      ))
                     }
                   >
                     Ajukan
@@ -1580,43 +1641,47 @@ export function LeaveRequestModal({
                   <Button type="button" variant="outline" onClick={onClose}>
                     Tutup
                   </Button>
-                  {showRejectionForm ? (
+                  {requestData?.supervisor_status === "Pending" && (
                     <>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setShowRejectionForm(false)}
-                      >
-                        Kembali
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        onClick={() => handleSupervisorAction("Rejected")}
-                        disabled={!isValidSupervisor || !formData.rejectionReason}
-                      >
-                        Konfirmasi Penolakan
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        onClick={() => handleSupervisorAction("Rejected")}
-                        disabled={!isValidSupervisor}
-                      >
-                        <X className="mr-2 h-4 w-4" />
-                        Tolak
-                      </Button>
-                      <Button
-                        type="button"
-                        onClick={() => handleSupervisorAction("Approved")}
-                        disabled={!isValidSupervisor || !formData.supervisorSigned}
-                      >
-                        <Check className="mr-2 h-4 w-4" />
-                        Setujui
-                      </Button>
+                      {showRejectionForm ? (
+                        <>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setShowRejectionForm(false)}
+                          >
+                            Kembali
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            onClick={() => handleSupervisorAction("Rejected")}
+                            disabled={!isValidSupervisor || !formData.rejectionReason}
+                          >
+                            Konfirmasi Penolakan
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            onClick={() => setShowRejectionForm(true)}
+                            disabled={!isValidSupervisor}
+                          >
+                            <X className="mr-2 h-4 w-4" />
+                            Tolak
+                          </Button>
+                          <Button
+                            type="button"
+                            onClick={() => handleSupervisorAction("Approved")}
+                            disabled={!isValidSupervisor || !formData.supervisorSigned}
+                          >
+                            <Check className="mr-2 h-4 w-4" />
+                            Setujui
+                          </Button>
+                        </>
+                      )}
                     </>
                   )}
                 </>
@@ -1627,45 +1692,47 @@ export function LeaveRequestModal({
                   <Button type="button" variant="outline" onClick={onClose}>
                     Tutup
                   </Button>
-                  {showRejectionForm ? (
+                  {requestData?.authorized_officer_status === "Pending" && (
                     <>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setShowRejectionForm(false)}
-                      >
-                        Kembali
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        onClick={() => handleAuthorizedOfficerAction("Rejected")}
-                        disabled={!isValidAuthorizedOfficer || !formData.rejectionReason}
-                      >
-                        Konfirmasi Penolakan
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        onClick={() => handleAuthorizedOfficerAction("Rejected")}
-                        disabled={!isValidAuthorizedOfficer}
-                      >
-                        <X className="mr-2 h-4 w-4" />
-                        Tolak
-                      </Button>
-                      <Button
-                        type="button"
-                        onClick={() => handleAuthorizedOfficerAction("Approved")}
-                        disabled={
-                          !isValidAuthorizedOfficer || !formData.authorizedOfficerSigned
-                        }
-                      >
-                        <Check className="mr-2 h-4 w-4" />
-                        Setujui
-                      </Button>
+                      {showRejectionForm ? (
+                        <>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setShowRejectionForm(false)}
+                          >
+                            Kembali
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            onClick={() => handleAuthorizedOfficerAction("Rejected")}
+                            disabled={!isValidAuthorizedOfficer || !formData.rejectionReason}
+                          >
+                            Konfirmasi Penolakan
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            onClick={() => setShowRejectionForm(true)}
+                            disabled={!isValidAuthorizedOfficer}
+                          >
+                            <X className="mr-2 h-4 w-4" />
+                            Tolak
+                          </Button>
+                          <Button
+                            type="button"
+                            onClick={() => handleAuthorizedOfficerAction("Approved")}
+                            disabled={!isValidAuthorizedOfficer || !formData.authorizedOfficerSigned}
+                          >
+                            <Check className="mr-2 h-4 w-4" />
+                            Setujui
+                          </Button>
+                        </>
+                      )}
                     </>
                   )}
                 </>
@@ -1685,7 +1752,6 @@ export function LeaveRequestModal({
       <SearchDialog
         isOpen={isSupervisorDialogOpen}
         onOpenChange={(open) => {
-          // Jika dialog ditutup, pastikan perubahan supervisor tetap tersimpan
           if (!open && formData.supervisorId) {
             console.log(
               "Supervisor dialog closed, preserving selected supervisor:",
@@ -1705,7 +1771,6 @@ export function LeaveRequestModal({
       <SearchDialog
         isOpen={isAuthorizedOfficerDialogOpen}
         onOpenChange={(open) => {
-          // Jika dialog ditutup, pastikan perubahan pejabat berwenang tetap tersimpan
           if (!open && formData.authorizedOfficerId) {
             console.log(
               "Authorized officer dialog closed, preserving selected officer:",

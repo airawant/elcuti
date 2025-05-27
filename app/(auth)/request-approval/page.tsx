@@ -98,65 +98,37 @@ export default function RequestApprovalPage() {
     setIsModalOpen(true)
   }
 
-  const handleApprovalSubmission = async (data: any) => {
+  const handleApprovalSubmission = async (approvalData: {
+    leaveRequestId: string;
+    action: "Approved" | "Rejected";
+    type: "supervisor" | "authorized_officer";
+    rejectionReason?: string;
+    signatureDate?: string;
+    signed: boolean;
+  }) => {
     try {
-      console.log("Handling approval submission with data:", data);
-
-      if (!data.requestId) {
-        console.error("Missing requestId in approval data");
-        toast({
-          title: "Gagal",
-          description: "ID permintaan tidak valid",
-          variant: "destructive",
-        });
-        return;
+      if (!approvalData.leaveRequestId) {
+        throw new Error("Missing requestId in approval data");
       }
 
-      // Pastikan requestId dalam bentuk number
-      const requestId = Number(data.requestId);
-      if (isNaN(requestId)) {
-        console.error("Invalid requestId format:", data.requestId);
-        toast({
-          title: "Gagal",
-          description: "Format ID permintaan tidak valid",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log("Sending approval with requestId:", requestId);
-
-      // Perbarui status permintaan cuti
-      await updateLeaveRequest(
-        requestId,
-        data.approverType,
-        data.status,
-        data.rejectionReason,
-        data.signatureDate,
-        data.signed
-      );
-
-      setIsModalOpen(false);
-      toast({
-        title: data.status === "Approved" ? "Permintaan disetujui" : "Permintaan ditolak",
-        description:
-          data.status === "Approved" ? "Permintaan cuti telah berhasil disetujui" : "Permintaan cuti telah ditolak",
+      const response = await fetch("/api/leave-requests", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(approvalData),
       });
 
-      // Refresh data
-      await refreshLeaveRequests();
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to process approval");
+      }
 
-      // Gunakan router.refresh() sebagai pengganti window.location.reload()
+      // Refresh data after successful approval
       router.refresh();
     } catch (error) {
-      console.error("Error updating leave request:", error);
-      toast({
-        title: "Gagal",
-        description: error instanceof Error
-          ? error.message
-          : "Terjadi kesalahan saat memperbarui status. Silakan coba lagi.",
-        variant: "destructive",
-      });
+      console.error("Error in approval submission:", error);
+      throw error;
     }
   };
 

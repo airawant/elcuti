@@ -130,7 +130,7 @@ export default function AdminUsersPage() {
       isauthorizedofficer: false,
       password: "",
       leave_balance: {
-        [previousYear]: 12,
+        [previousYear]: 6,
         [currentYear]: 12,
       },
     },
@@ -151,7 +151,7 @@ export default function AdminUsersPage() {
       isauthorizedofficer: false,
       password: "",
       leave_balance: {
-        [previousYear]: 12,
+        [previousYear]:6,
         [currentYear]: 12,
       },
     },
@@ -172,7 +172,7 @@ export default function AdminUsersPage() {
       const userToEdit = users.find((u) => u.id === selectedUser)
       if (userToEdit) {
         const defaultLeaveBalance = {
-          [previousYear]: 12,
+          [previousYear]: 6,
           [currentYear]: 12,
         };
 

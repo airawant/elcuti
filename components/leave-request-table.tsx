@@ -41,6 +41,7 @@ type LeaveRequest = {
   workingdays?: number
   address?: string
   phone?: string
+  link_file?: string
 }
 
 interface LeaveRequestTableProps {
@@ -390,6 +391,7 @@ export function LeaveRequestTable({ userId }: LeaveRequestTableProps) {
                 <TableHead onClick={() => handleSort("status")}>Status</TableHead>
                 <TableHead onClick={() => handleSort("created_at")}>Tanggal Pengajuan</TableHead>
                 <TableHead>Aksi</TableHead>
+                <TableHead>Download</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -424,6 +426,19 @@ export function LeaveRequestTable({ userId }: LeaveRequestTableProps) {
                           >
                         <Eye className="h-4 w-4 mr-1" /> Lihat
                       </Button>
+                    </TableCell>
+                    <TableCell>
+                      {item.link_file ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open(item.link_file, '_blank')}
+                        >
+                          Download
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-gray-500">Tidak tersedia</span>
+                      )}
                     </TableCell>
                   </TableRow>
                     ))}

@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { supabase, supabaseAdmin } from "@/lib/supabase"
 import { getAuthCookie, verifyJWT } from "@/lib/auth-utils"
+import { generateLeaveRequestId } from "@/lib/leave-utils"
 import { z } from "zod"
 
 // Define validation schema for leave requests
@@ -22,6 +23,10 @@ const leaveRequestSchema = z.object({
   authorized_officer_viewed: z.boolean(),
   supervisor_signed: z.boolean(),
   authorized_officer_signed: z.boolean(),
+  saldo_carry: z.number(),
+  saldo_current_year: z.number(),
+  used_carry_over_days: z.number().optional(),
+  used_current_year_days: z.number().optional(),
 })
 
 export async function GET(request: NextRequest) {
@@ -136,6 +141,9 @@ export async function POST(request: NextRequest) {
       throw new Error("Supabase admin client not initialized")
     }
 
+    // Generate unique ID for leave request
+    const leaveRequestId = generateLeaveRequestId(leaveRequestData.user_id)
+
     // Hitung hari kerja jika tidak disediakan
     if (!leaveRequestData.workingdays) {
       const startDate = new Date(leaveRequestData.start_date)
@@ -190,8 +198,9 @@ export async function POST(request: NextRequest) {
     const currentYear = new Date(leaveRequestData.start_date).getFullYear()
     const previousYear = currentYear - 1
 
-    const currentYearBalance = 12 // Saldo awal tahun berjalan
-    const carryOverBalance = Math.min(6, leaveBalance?.[previousYear.toString()] || 0)
+    // Ambil saldo dari leave_balance pegawai
+    const currentYearBalance = leaveBalance[currentYear.toString()] || 12
+    const carryOverBalance = Math.min(6, leaveBalance[previousYear.toString()] || 0)
     console.log("Current year balance:", currentYearBalance)
     console.log("Carry over balance:", carryOverBalance)
 
@@ -260,11 +269,43 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
+    // Potong saldo cuti di tabel pegawai
+    const updatedLeaveBalance = { ...leaveBalance }
+
+    // Potong saldo carry over jika digunakan
+    if (usedCarryOver > 0) {
+      const prevYearStr = previousYear.toString()
+      updatedLeaveBalance[prevYearStr] = Math.max(0, (updatedLeaveBalance[prevYearStr] || 0) - usedCarryOver)
+    }
+
+    // Potong saldo tahun berjalan
+    if (usedCurrentYear > 0) {
+      const currentYearStr = currentYear.toString()
+      updatedLeaveBalance[currentYearStr] = Math.max(0, (updatedLeaveBalance[currentYearStr] || 12) - usedCurrentYear)
+    }
+
+    // Update saldo di tabel pegawai
+    const { error: updateBalanceError } = await supabaseAdmin
+      .from('pegawai')
+      .update({ leave_balance: updatedLeaveBalance })
+      .eq('id', leaveRequestData.user_id)
+
+    if (updateBalanceError) {
+      console.error("Error updating leave balance:", updateBalanceError)
+      return NextResponse.json({
+        error: "Failed to update leave balance",
+        details: updateBalanceError.message
+      }, { status: 500 })
+    }
+
     // Insert leave request into database using admin client
     const { data, error } = await supabaseAdmin
       .from("leave_requests")
       .insert({
+        id: leaveRequestId,
         ...leaveRequestData,
+        saldo_carry: carryOverBalance,
+        saldo_current_year: currentYearBalance,
         created_at: new Date().toISOString(),
         used_carry_over_days: usedCarryOver,
         used_current_year_days: usedCurrentYear,
@@ -392,136 +433,37 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Prepare update data
-    const updateData: any = {}
+    const updateData: any = {};
 
+    // Update berdasarkan tipe approver
     if (type === "supervisor") {
-      updateData.supervisor_status = action
-      updateData.supervisor_viewed = true
-      updateData.supervisor_signed = signed
-      updateData.supervisor_signature_date = signatureDate
-      if (action === "Rejected") {
-        updateData.status = "Rejected"
-        updateData.rejection_reason = rejectionReason
+      updateData.supervisor_status = action;
+      updateData.supervisor_viewed = true;
+      if (action === "Approved") {
+        updateData.supervisor_signed = signed;
+        updateData.supervisor_signature_date = signatureDate;
+      } else if (action === "Rejected") {
+        updateData.status = "Rejected";
+        updateData.rejection_reason = rejectionReason;
       }
     } else if (type === "authorized_officer") {
-      updateData.authorized_officer_status = action
-      updateData.authorized_officer_viewed = true
-      updateData.authorized_officer_signed = signed
-      updateData.authorized_officer_signature_date = signatureDate
-      if (action === "Rejected") {
-        updateData.status = "Rejected"
-        updateData.rejection_reason = rejectionReason
-      }
-    }
+      updateData.authorized_officer_status = action;
+      updateData.authorized_officer_viewed = true;
+      if (action === "Approved") {
+        updateData.status = "Approved";
+        updateData.authorized_officer_signed = signed;
+        updateData.authorized_officer_signature_date = signatureDate;
 
-    // If both supervisor and authorized officer approved, update main status
-    if (
-      (type === "supervisor" && action === "Approved" && currentRequest.authorized_officer_status === "Approved") ||
-      (type === "authorized_officer" && action === "Approved" && currentRequest.supervisor_status === "Approved")
-    ) {
-      updateData.status = "Approved"
+        // Kirim data ke Google Script ketika disetujui oleh authorized officer
+        try {
+          const googleScriptEndpoint = process.env.GOOGLE_SCRIPT_ENDPOINT as string;
 
-      // Update leave balance when request is fully approved
-      if (currentRequest.type === "Cuti Tahunan") {
-        // Fetch current user's leave balance
-        const { data: userData, error: userError } = await supabaseAdmin
-          .from('pegawai')
-          .select('leave_balance')
-          .eq('id', currentRequest.user_id)
-          .single()
-
-        if (userError) {
-          console.error("Error fetching user leave balance:", userError)
-          return NextResponse.json({ error: "Failed to update leave balance" }, { status: 500 })
-        }
-
-        const leaveYear = new Date(currentRequest.start_date).getFullYear().toString()
-        const leaveBalance = userData?.leave_balance || {}
-
-        // Update leave balance for the year
-        if (currentRequest.used_current_year_days > 0) {
-          leaveBalance[leaveYear] = (leaveBalance[leaveYear] || 12) - currentRequest.used_current_year_days
-        }
-
-        // Update previous year's balance if carry-over days were used
-        if (currentRequest.used_carry_over_days > 0) {
-          const previousYear = (parseInt(leaveYear) - 1).toString()
-          if (leaveBalance[previousYear]) {
-            leaveBalance[previousYear] = Math.max(0, leaveBalance[previousYear] - currentRequest.used_carry_over_days)
-          }
-        }
-
-        // Save updated leave balance
-        const { error: updateError } = await supabaseAdmin
-          .from('pegawai')
-          .update({ leave_balance: leaveBalance })
-          .eq('id', currentRequest.user_id)
-
-        if (updateError) {
-          console.error("Error updating leave balance:", updateError)
-          return NextResponse.json({ error: "Failed to update leave balance" }, { status: 500 })
-        }
-
-        console.log("Leave balance updated:", {
-          userId: currentRequest.user_id,
-          oldBalance: userData?.leave_balance,
-          newBalance: leaveBalance,
-          usedCurrentYear: currentRequest.used_current_year_days,
-          usedCarryOver: currentRequest.used_carry_over_days
-        })
-      }
-
-      // Notifikasi ke Google Script ketika cuti disetujui
-      try {
-        const googleScriptEndpoint = "https://script.google.com/macros/s/AKfycbxqZdhvNnZS1NS-uQP6cDQRw0raielTh8LQGijI5vPZKSMLxENnFl8FVuTIpDHNw5IRJg/exec";
-
-        // Pastikan data requester, supervisor, dan authorized officer ada
-        if (!currentRequest.requester) {
-          console.error("Data requester tidak ditemukan:", currentRequest);
-          throw new Error("Data requester tidak ditemukan");
-        }
-
-        if (!currentRequest.supervisor) {
-          console.error("Data supervisor tidak ditemukan:", currentRequest);
-          // Tidak throw error, tetap lanjutkan proses
-        }
-
-        if (!currentRequest.authorized_officer) {
-          console.error("Data authorized officer tidak ditemukan:", currentRequest);
-          // Tidak throw error, tetap lanjutkan proses
-        }
-
-        // Fetch leave balance info for the current and previous year
-        const { data: userBalanceData, error: balanceError } = await supabaseAdmin
-          .from('pegawai')
-          .select('leave_balance')
-          .eq('id', currentRequest.user_id)
-          .single();
-
-        if (balanceError) {
-          console.error("Error fetching leave balance for notification:", balanceError);
-        }
-
-        const leaveBalance = userBalanceData?.leave_balance || {};
-        const currentYear = new Date(currentRequest.start_date).getFullYear();
-        const previousYear = currentYear - 1;
-
-        const previousYearBalance = leaveBalance[previousYear.toString()] || 0;
-        const currentYearBalance = leaveBalance[currentYear.toString()] || 12;
-
-        // Log data yang akan dikirim untuk debugging
-        console.log("Data untuk Google Script:", {
-          user_id: currentRequest.user_id,
-          requester: currentRequest.requester,
-          supervisor: currentRequest.supervisor,
-          authorizedOfficer: currentRequest.authorized_officer,
-          leaveBalance,
-          previousYearBalance,
-          currentYearBalance
-        });
-
-        // Menyiapkan data untuk dikirim ke Google Script sesuai permintaan
+          if (!googleScriptEndpoint) {
+            console.error("Google Script Endpoint tidak dikonfigurasi");
+          } else {
+            // Siapkan data untuk dikirim ke Google Script
         const requestData = {
+              id: currentRequest.id,
           namapegawai: currentRequest.requester?.name || "",
           jabatan: currentRequest.requester?.position || "",
           unit: currentRequest.requester?.workunit || "",
@@ -531,8 +473,8 @@ export async function PATCH(request: NextRequest) {
           tanggalSelesai: currentRequest.end_date,
           jumlahHari: currentRequest.workingdays,
           alasan: currentRequest.reason || "",
-          saldoawal_n1: previousYearBalance,
-          saldo_ntahun: currentYearBalance,
+              saldoawal_n1: currentRequest.saldo_carry,
+              saldo_ntahun: currentRequest.saldo_current_year,
           nama_supervisor: currentRequest.supervisor?.name || "",
           nip_supervisor: currentRequest.supervisor?.nip || "",
           nama_officier: currentRequest.authorized_officer?.name || "",
@@ -542,23 +484,26 @@ export async function PATCH(request: NextRequest) {
           telp: currentRequest.requester?.phone || currentRequest.phone || ""
         };
 
-        console.log("Sending notification to Google Script with data:", requestData);
+            console.log("Mengirim data ke Google Script:", requestData);
 
+            // Set timeout 30 detik
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 detik timeout
+            const timeoutId = setTimeout(() => {
+              controller.abort();
+              console.log("Request ke Google Script timeout setelah 30 detik");
+            }, 30000);
 
-        try {
           const response = await fetch(googleScriptEndpoint, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
             body: JSON.stringify(requestData),
-            signal: controller.signal
+              signal: controller.signal,
+              keepalive: true
           });
 
           clearTimeout(timeoutId);
-          console.log("Google Script response status:", response.status, response.statusText);
 
           if (!response.ok) {
             const errorText = await response.text();
@@ -568,53 +513,54 @@ export async function PATCH(request: NextRequest) {
               body: errorText
             });
           } else {
-            let responseData;
             const responseText = await response.text();
-
             try {
               if (responseText.trim()) {
-                responseData = JSON.parse(responseText);
-                console.log("Notifikasi Google Script berhasil dengan respons JSON:", responseData);
-              } else {
-                console.log("Notifikasi Google Script berhasil dengan respons kosong");
+                  const responseData = JSON.parse(responseText);
+                  console.log("Response dari Google Script:", responseData);
+
+                  // Jika ada link file, tambahkan ke updateData
+                  if (responseData?.success && responseData?.data) {
+                    updateData.link_file = responseData.data;
+                    console.log("Link file akan disimpan:", responseData.data);
+                  }
+                }
+              } catch (jsonError) {
+                console.log("Response non-JSON dari Google Script:", responseText);
               }
-            } catch (jsonError) {
-              console.log("Notifikasi Google Script berhasil dengan respons non-JSON:", responseText);
             }
           }
-        } catch (fetchError) {
-          clearTimeout(timeoutId);
-          console.error("Error saat fetch ke Google Script:", fetchError);
-
-          // Log data tambahan untuk debugging
-          console.log("Request data yang gagal dikirim:", JSON.stringify(requestData, null, 2));
+        } catch (error) {
+          console.error("Error saat mengirim ke Google Script:", error);
+          // Lanjutkan proses meskipun ada error
         }
-      } catch (error) {
-        console.error("Error pada proses notifikasi ke Google Script:", error);
-        // Error dalam notifikasi tidak menggagalkan proses utama
+      } else if (action === "Rejected") {
+        updateData.status = "Rejected";
+        updateData.rejection_reason = rejectionReason;
       }
     }
 
-    // Update leave request
-    const { data, error } = await supabaseAdmin
+    // Update status permintaan cuti
+    const { error: updateError } = await supabaseAdmin
       .from("leave_requests")
       .update(updateData)
-      .eq("id", leaveRequestId)
-      .select()
-      .single()
+      .eq("id", leaveRequestId);
 
-    if (error) {
-      console.error("Error updating leave request:", error)
-      return NextResponse.json({ error: "Failed to update leave request", details: error.message }, { status: 500 })
+    if (updateError) {
+      console.error("Error updating leave request:", updateError);
+      return NextResponse.json(
+        { error: "Failed to update leave request" },
+        { status: 500 }
+      );
     }
 
-    console.log("Leave request updated successfully:", data)
-    return NextResponse.json({ message: "Leave request updated successfully", leaveRequest: data }, { status: 200 })
+    return NextResponse.json({ message: "Leave request updated successfully" });
+
   } catch (error) {
-    console.error("Update leave request error:", error)
-    return NextResponse.json({
-      error: "Internal server error",
-      details: error instanceof Error ? error.message : "Unknown error"
-    }, { status: 500 })
+    console.error("Error in PATCH /api/leave-requests:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
 }
