@@ -76,7 +76,7 @@ export function LeaveRequestModal({
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: user?.name || "",
-    nip: user?.id?.toString() || "",
+    nip: user?.nip?.toString() || "",
     position: user?.position || "",
     workUnit: "Subbag. Tata Usaha Kankemenag Kota Tanjungpinang",
     yearsOfService: "2 tahun",
@@ -244,7 +244,7 @@ export function LeaveRequestModal({
         return {
           ...prev,
           name: user.name || "",
-          nip: user.id?.toString() || "",
+          nip: user.nip?.toString() || "",
           position: user.position || "",
           workUnit: user.workunit || "Subbag. Tata Usaha Kankemenag Kota Tanjungpinang",
           leaveType: "Cuti Tahunan",
@@ -305,7 +305,7 @@ export function LeaveRequestModal({
       setFormData((prev) => ({
         ...prev,
         name: requester?.name || "",
-        nip: requester?.id?.toString() || "",
+        nip: requester?.nip?.toString() || "",
         position: requester?.position || "",
         workUnit: requester?.workunit || "Subbag. Tata Usaha Kankemenag Kota Tanjungpinang",
         yearsOfService: "2 tahun",
@@ -323,7 +323,7 @@ export function LeaveRequestModal({
         supervisorId: requestData.supervisor_id,
         supervisorName: supervisor?.name || "",
         supervisorPosition: supervisor?.position || "",
-        supervisorNIP: supervisor?.id?.toString() || "",
+        supervisorNIP: supervisor?.nip?.toString() || "",
         supervisorSigned: prev.supervisorSigned || requestData.supervisor_signed || false,
         supervisorSignatureDate:
           prev.supervisorSignatureDate || requestData.supervisor_signature_date || "",
@@ -331,7 +331,7 @@ export function LeaveRequestModal({
         authorizedOfficerId: requestData.authorized_officer_id,
         authorizedOfficerName: authorizedOfficer?.name || "",
         authorizedOfficerPosition: authorizedOfficer?.position || "",
-        authorizedOfficerNIP: authorizedOfficer?.id?.toString() || "",
+        authorizedOfficerNIP: authorizedOfficer?.nip?.toString() || "",
         authorizedOfficerSigned:
           prev.authorizedOfficerSigned || requestData.authorized_officer_signed || false,
         authorizedOfficerSignatureDate:
@@ -343,7 +343,7 @@ export function LeaveRequestModal({
       // Check if current user is the assigned supervisor
       if (user && approverType === "supervisor" && user.id === requestData.supervisor_id) {
         setIsValidSupervisor(true);
-        setSupervisorNIPInput(user.id.toString());
+        setSupervisorNIPInput(user.nip?.toString() || "");
       }
 
       // Check if current user is the authorized officer
@@ -353,7 +353,7 @@ export function LeaveRequestModal({
         user.id === requestData.authorized_officer_id
       ) {
         setIsValidAuthorizedOfficer(true);
-        setAuthorizedOfficerNIPInput(user.id.toString());
+        setAuthorizedOfficerNIPInput(user.nip?.toString() || "");
       }
 
       // Calculate leave balances for the requester
