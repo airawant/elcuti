@@ -44,6 +44,10 @@
     --annual-leave: 14 100% 57%;
     --important-leave: 214 100% 65%;
     --extended-leave: 0 0% 85%;
+
+    /* Custom colors for leave balance */
+    --two-years-ago-leave: 271 81% 56%;
+    --carry-over-leave: 214 100% 65%;
   }
 
   .dark {

@@ -76,6 +76,7 @@ export default function AdminUsersPage() {
   // Get current year and previous year for leave balance
   const currentYear = new Date().getFullYear().toString()
   const previousYear = (new Date().getFullYear() - 1).toString()
+  const twoYearsAgo = (new Date().getFullYear() - 2).toString()
 
   // Fungsi untuk menghitung saldo cuti yang tersisa dengan benar
   const calculateRemainingLeaveBalance = (userId: number, year: string) => {
@@ -130,6 +131,7 @@ export default function AdminUsersPage() {
       isauthorizedofficer: false,
       password: "",
       leave_balance: {
+        [twoYearsAgo]: 0,
         [previousYear]: 6,
         [currentYear]: 12,
       },
@@ -151,7 +153,8 @@ export default function AdminUsersPage() {
       isauthorizedofficer: false,
       password: "",
       leave_balance: {
-        [previousYear]:6,
+        [twoYearsAgo]: 0,
+        [previousYear]: 6,
         [currentYear]: 12,
       },
     },
@@ -172,6 +175,7 @@ export default function AdminUsersPage() {
       const userToEdit = users.find((u) => u.id === selectedUser)
       if (userToEdit) {
         const defaultLeaveBalance = {
+          [twoYearsAgo]: 0,
           [previousYear]: 6,
           [currentYear]: 12,
         };
@@ -192,7 +196,7 @@ export default function AdminUsersPage() {
         })
       }
     }
-  }, [selectedUser, users, editForm, currentYear, previousYear])
+  }, [selectedUser, users, editForm, currentYear, previousYear, twoYearsAgo])
 
   if (!user || user.role !== "admin") {
     return null
@@ -294,9 +298,11 @@ export default function AdminUsersPage() {
     // Format data pengguna untuk CSV
     const csvData = users.map(user => {
       // Hitung sisa saldo cuti untuk tahun sebelumnya dan tahun berjalan
+      const twoYearsAgoRemainingBalance = calculateRemainingLeaveBalance(user.id, twoYearsAgo);
       const previousYearRemainingBalance = calculateRemainingLeaveBalance(user.id, previousYear);
       const currentYearRemainingBalance = calculateRemainingLeaveBalance(user.id, currentYear);
 
+      const initialTwoYearsAgoBalance = user.leave_balance ? (user.leave_balance[twoYearsAgo] || 0) : 0;
       const initialPreviousYearBalance = user.leave_balance ? (user.leave_balance[previousYear] || 0) : 0;
       const initialCurrentYearBalance = user.leave_balance ? (user.leave_balance[currentYear] || 0) : 0;
 
@@ -309,6 +315,8 @@ export default function AdminUsersPage() {
         user.email || "",
         user.phone || "",
         user.address || "",
+        initialTwoYearsAgoBalance,
+        twoYearsAgoRemainingBalance,
         initialPreviousYearBalance,
         previousYearRemainingBalance,
         initialCurrentYearBalance,
@@ -551,19 +559,37 @@ export default function AdminUsersPage() {
                       {addForm.watch("role") === "user" && (
                         <div className="space-y-4">
                           <h3 className="text-sm font-medium">Saldo Cuti</h3>
-                          <div className="grid grid-cols-2 gap-4">
+                          <div className="grid grid-cols-3 gap-4">
+                            <FormField
+                              control={addForm.control}
+                              name={`leave_balance.${twoYearsAgo}`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Tahun N-2 ({twoYearsAgo})</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      value={field.value ?? 0}
+                                      onChange={(e) => field.onChange(Number.parseInt(e.target.value) || 0)}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
                             <FormField
                               control={addForm.control}
                               name={`leave_balance.${previousYear}`}
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Tahun Sebelumnya ({previousYear})</FormLabel>
+                                  <FormLabel>Tahun N-1 ({previousYear})</FormLabel>
                                   <FormControl>
                                     <Input
                                       type="number"
                                       min="0"
-                                      {...field}
-                                      onChange={(e) => field.onChange(Number.parseInt(e.target.value))}
+                                      value={field.value ?? 0}
+                                      onChange={(e) => field.onChange(Number.parseInt(e.target.value) || 0)}
                                     />
                                   </FormControl>
                                   <FormMessage />
@@ -580,8 +606,8 @@ export default function AdminUsersPage() {
                                     <Input
                                       type="number"
                                       min="0"
-                                      {...field}
-                                      onChange={(e) => field.onChange(Number.parseInt(e.target.value))}
+                                      value={field.value ?? 0}
+                                      onChange={(e) => field.onChange(Number.parseInt(e.target.value) || 0)}
                                     />
                                   </FormControl>
                                   <FormMessage />
@@ -621,6 +647,21 @@ export default function AdminUsersPage() {
                       <TableHead>Satuan Kerja</TableHead>
                       <TableHead className="relative">
                         <div className="flex items-center gap-1">
+                          <span>Sisa Cuti {twoYearsAgo}</span>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="max-w-xs">Sisa saldo cuti setelah dikurangi cuti yang sudah diambil pada tahun {twoYearsAgo}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </TableHead>
+                      <TableHead className="relative">
+                        <div className="flex items-center gap-1">
                           <span>Sisa Cuti {previousYear}</span>
                           <TooltipProvider>
                             <Tooltip>
@@ -655,14 +696,17 @@ export default function AdminUsersPage() {
                   <TableBody>
                     {users.map((user) => {
                       // Hitung sisa saldo cuti untuk tahun sebelumnya dan tahun berjalan
+                      const twoYearsAgoRemainingBalance = calculateRemainingLeaveBalance(user.id, twoYearsAgo);
                       const previousYearRemainingBalance = calculateRemainingLeaveBalance(user.id, previousYear);
                       const currentYearRemainingBalance = calculateRemainingLeaveBalance(user.id, currentYear);
 
                       // Dapatkan saldo awal untuk perbandingan
+                      const initialTwoYearsAgoBalance = user.leave_balance ? (user.leave_balance[twoYearsAgo] || 0) : 0;
                       const initialPreviousYearBalance = user.leave_balance ? (user.leave_balance[previousYear] || 0) : 0;
                       const initialCurrentYearBalance = user.leave_balance ? (user.leave_balance[currentYear] || 0) : 0;
 
                       // Tentukan apakah saldo berubah
+                      const isTwoYearsAgoBalanceChanged = twoYearsAgoRemainingBalance !== initialTwoYearsAgoBalance;
                       const isPreviousYearBalanceChanged = previousYearRemainingBalance !== initialPreviousYearBalance;
                       const isCurrentYearBalanceChanged = currentYearRemainingBalance !== initialCurrentYearBalance;
 
@@ -673,6 +717,16 @@ export default function AdminUsersPage() {
                           <TableCell>{user.role === "admin" ? "Administrator" : "Pengguna"}</TableCell>
                           <TableCell>{user.position}</TableCell>
                           <TableCell>{user.workunit}</TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex flex-col items-center">
+                              <span className="font-medium">{twoYearsAgoRemainingBalance} hari</span>
+                              {isTwoYearsAgoBalanceChanged && (
+                                <span className="text-xs text-blue-600">
+                                  (Awal: {initialTwoYearsAgoBalance})
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
                           <TableCell className="text-center">
                             <div className="flex flex-col items-center">
                               <span className="font-medium">{previousYearRemainingBalance} hari</span>
@@ -909,19 +963,37 @@ export default function AdminUsersPage() {
                 {editForm.watch("role") === "user" && (
                   <div className="space-y-4">
                     <h3 className="text-sm font-medium">Saldo Cuti</h3>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
+                      <FormField
+                        control={editForm.control}
+                        name={`leave_balance.${twoYearsAgo}`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Tahun N-2 ({twoYearsAgo})</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min="0"
+                                value={field.value ?? 0}
+                                onChange={(e) => field.onChange(Number.parseInt(e.target.value) || 0)}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                       <FormField
                         control={editForm.control}
                         name={`leave_balance.${previousYear}`}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Tahun Sebelumnya ({previousYear})</FormLabel>
+                            <FormLabel>Tahun N-1 ({previousYear})</FormLabel>
                             <FormControl>
                               <Input
                                 type="number"
                                 min="0"
-                                {...field}
-                                onChange={(e) => field.onChange(Number.parseInt(e.target.value))}
+                                value={field.value ?? 0}
+                                onChange={(e) => field.onChange(Number.parseInt(e.target.value) || 0)}
                               />
                             </FormControl>
                             <FormMessage />
@@ -938,8 +1010,8 @@ export default function AdminUsersPage() {
                               <Input
                                 type="number"
                                 min="0"
-                                {...field}
-                                onChange={(e) => field.onChange(Number.parseInt(e.target.value))}
+                                value={field.value ?? 0}
+                                onChange={(e) => field.onChange(Number.parseInt(e.target.value) || 0)}
                               />
                             </FormControl>
                             <FormMessage />

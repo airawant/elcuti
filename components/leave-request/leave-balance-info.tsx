@@ -9,13 +9,21 @@ interface LeaveBalanceInfoProps {
   leaveType: string;
   userId?: number;
   mode?: "create" | "view" | "approve";
+  selectedLeaveBalance?: "twoYearsAgo" | "carryOver" | "current";
+  usedTwoYearsAgo?: number;
+  usedPrevYear?: number;
+  usedCurrentYear?: number;
 }
 
 export function LeaveBalanceInfo({
   workingDays,
   leaveType,
   userId,
-  mode = "create"
+  mode = "create",
+  selectedLeaveBalance = "current",
+  usedTwoYearsAgo = 0,
+  usedPrevYear = 0,
+  usedCurrentYear = 0,
 }: LeaveBalanceInfoProps) {
   const { users } = useAuth();
 
@@ -36,34 +44,50 @@ export function LeaveBalanceInfo({
 
   const currentYear = new Date().getFullYear();
   const previousYear = currentYear - 1;
+  const twoYearsAgo = currentYear - 2;
 
   // Ambil saldo dari leave_balance di tabel pegawai
   const currentYearBalance = user.leave_balance[currentYear.toString()] || 0;
   const previousYearBalance = user.leave_balance[previousYear.toString()] || 0;
-  const totalBalance = currentYearBalance + previousYearBalance;
+  const twoYearsAgoBalance = user.leave_balance[twoYearsAgo.toString()] || 0;
+  const totalBalance = currentYearBalance + previousYearBalance + twoYearsAgoBalance;
 
-  // Tentukan pengurangan saldo untuk permintaan cuti baru
-  let deductionFromPrevYear = 0;
-  let deductionFromCurrentYear = 0;
+  // Gunakan input manual jika ada
+  let deductionFromTwoYearsAgo = usedTwoYearsAgo;
+  let deductionFromPrevYear = usedPrevYear;
+  let deductionFromCurrentYear = usedCurrentYear;
 
-  if (workingDays > 0) {
-    // Jika ada sisa saldo tahun lalu, gunakan itu dulu
-    if (previousYearBalance > 0) {
-      deductionFromPrevYear = Math.min(previousYearBalance, workingDays);
-      deductionFromCurrentYear = Math.max(0, workingDays - deductionFromPrevYear);
-    } else {
-      // Jika tidak ada sisa saldo tahun lalu, gunakan saldo tahun ini
-      deductionFromCurrentYear = workingDays;
+  // Jika input manual tidak ada (semua 0), fallback ke selectedLeaveBalance
+  if (deductionFromTwoYearsAgo + deductionFromPrevYear + deductionFromCurrentYear === 0 && workingDays > 0) {
+     switch (selectedLeaveBalance) {
+      case 'twoYearsAgo':
+        if (twoYearsAgoBalance > 0) {
+          deductionFromTwoYearsAgo = Math.min(twoYearsAgoBalance, workingDays);
+        }
+        break;
+      case 'carryOver':
+        if (previousYearBalance > 0) {
+          deductionFromPrevYear = Math.min(previousYearBalance, workingDays);
+        }
+        break;
+      case 'current':
+        if (currentYearBalance > 0) {
+          deductionFromCurrentYear = Math.min(currentYearBalance, workingDays);
+        }
+        break;
     }
   }
 
   // Hitung sisa saldo setelah pengurangan
   const remainingAfterDeduction = {
+    remainingTwoYearsAgo: Math.max(0, twoYearsAgoBalance - deductionFromTwoYearsAgo),
     remainingCarryOver: Math.max(0, previousYearBalance - deductionFromPrevYear),
     remainingCurrentYear: Math.max(0, currentYearBalance - deductionFromCurrentYear),
   };
 
-  const totalRemaining = remainingAfterDeduction.remainingCarryOver + remainingAfterDeduction.remainingCurrentYear;
+  const totalRemaining = remainingAfterDeduction.remainingTwoYearsAgo +
+                        remainingAfterDeduction.remainingCarryOver +
+                        remainingAfterDeduction.remainingCurrentYear;
 
   // Check if balance is sufficient
   const isBalanceSufficient = totalBalance >= workingDays;
@@ -74,7 +98,7 @@ export function LeaveBalanceInfo({
       {leaveType === "Cuti Tahunan" && (
         <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
           <h4 className="text-sm font-medium text-blue-800">Informasi Saldo Cuti Tahunan</h4>
-          <div className="mt-2 grid grid-cols-3 gap-2 text-sm">
+          <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
             <div>
               <span className="text-blue-600">Saldo Tahun {currentYear}:</span>
               <span className="ml-1 font-medium">{currentYearBalance} hari</span>
@@ -82,6 +106,10 @@ export function LeaveBalanceInfo({
             <div>
               <span className="text-blue-600">Saldo Tahun N-1 ({previousYear}):</span>
               <span className="ml-1 font-medium">{previousYearBalance} hari</span>
+            </div>
+            <div>
+              <span className="text-blue-600">Saldo Tahun N-2 ({twoYearsAgo}):</span>
+              <span className="ml-1 font-medium">{twoYearsAgoBalance} hari</span>
             </div>
             <div>
               <span className="text-blue-600">Total Saldo:</span>
@@ -114,6 +142,11 @@ export function LeaveBalanceInfo({
               + {previousYearBalance} hari Tahun N-1 dari {previousYear}
             </div>
           )}
+          {twoYearsAgoBalance > 0 && (
+            <div className="text-xs text-gray-500">
+              + {twoYearsAgoBalance} hari Tahun N-2 dari {twoYearsAgo}
+            </div>
+          )}
         </div>
         <div>
           <div className="text-sm font-medium">Rencana Penggunaan</div>
@@ -121,12 +154,21 @@ export function LeaveBalanceInfo({
             <div className="font-medium">{workingDays} hari total</div>
             {leaveType === "Cuti Tahunan" && workingDays > 0 && (
               <>
+                {deductionFromTwoYearsAgo > 0 && (
+                  <div className="text-xs text-gray-500">
+                    {deductionFromTwoYearsAgo} hari dari saldo {twoYearsAgo}
+                  </div>
+                )}
+                {deductionFromPrevYear > 0 && (
                 <div className="text-xs text-gray-500">
                   {deductionFromPrevYear} hari dari saldo {previousYear}
                 </div>
+                )}
+                {deductionFromCurrentYear > 0 && (
                 <div className="text-xs text-gray-500">
                   {deductionFromCurrentYear} hari dari saldo {currentYear}
                 </div>
+                )}
               </>
             )}
           </div>
@@ -137,12 +179,21 @@ export function LeaveBalanceInfo({
             <div className="font-medium">{totalRemaining} hari total</div>
             {leaveType === "Cuti Tahunan" && workingDays > 0 && (
               <>
+                {remainingAfterDeduction.remainingTwoYearsAgo > 0 && (
+                  <div className="text-xs text-gray-500">
+                    {remainingAfterDeduction.remainingTwoYearsAgo} hari dari {twoYearsAgo}
+                  </div>
+                )}
+                {remainingAfterDeduction.remainingCarryOver > 0 && (
                 <div className="text-xs text-gray-500">
                   {remainingAfterDeduction.remainingCarryOver} hari dari {previousYear}
                 </div>
+                )}
+                {remainingAfterDeduction.remainingCurrentYear > 0 && (
                 <div className="text-xs text-gray-500">
                   {remainingAfterDeduction.remainingCurrentYear} hari dari {currentYear}
                 </div>
+                )}
               </>
             )}
             {leaveType !== "Cuti Tahunan" && (

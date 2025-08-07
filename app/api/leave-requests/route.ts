@@ -25,8 +25,10 @@ const leaveRequestSchema = z.object({
   authorized_officer_signed: z.boolean(),
   saldo_carry: z.number(),
   saldo_current_year: z.number(),
+  saldo_n2_year: z.number().optional(),
   used_carry_over_days: z.number().optional(),
   used_current_year_days: z.number().optional(),
+  used_n2_year: z.number().optional(),
 })
 
 export async function GET(request: NextRequest) {
@@ -195,19 +197,22 @@ export async function POST(request: NextRequest) {
     const leaveBalance = userData.leave_balance || {}
     console.log("User leave balance:", leaveBalance)
 
-    const currentYear = new Date(leaveRequestData.start_date).getFullYear()
+    const currentYear = new Date().getFullYear()
     const previousYear = currentYear - 1
+    const twoYearsAgo = currentYear - 2
 
     // Ambil saldo dari leave_balance pegawai
     const currentYearBalance = leaveBalance[currentYear.toString()] || 12
     const carryOverBalance = Math.min(6, leaveBalance[previousYear.toString()] || 0)
+    const twoYearsAgoBalance = Math.min(6, leaveBalance[twoYearsAgo.toString()] || 0)
     console.log("Current year balance:", currentYearBalance)
     console.log("Carry over balance:", carryOverBalance)
+    console.log("Two years ago balance:", twoYearsAgoBalance)
 
     // Ambil penggunaan cuti yang sudah ada
     const { data: existingLeaves, error: leavesError } = await supabaseAdmin
       .from('leave_requests')
-      .select('workingdays, start_date, used_carry_over_days, used_current_year_days')
+      .select('workingdays, start_date, used_carry_over_days, used_current_year_days, used_n2_year')
       .eq('user_id', leaveRequestData.user_id)
       .eq('status', 'Approved')
       .eq('type', 'Cuti Tahunan')
@@ -220,57 +225,108 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
-    // Hitung penggunaan cuti yang sudah ada
-    const existingUsage = existingLeaves?.reduce((acc, leave) => {
-      const leaveYear = new Date(leave.start_date).getFullYear()
-      if (leaveYear === currentYear) {
-        acc.carryOver += leave.used_carry_over_days || 0
-        acc.currentYear += leave.used_current_year_days || 0
-      }
-      return acc
-    }, { carryOver: 0, currentYear: 0 }) || { carryOver: 0, currentYear: 0 }
-
-    console.log("Existing usage:", existingUsage)
-
     // Hitung penggunaan untuk permintaan baru
     const workingDays = leaveRequestData.workingdays || 0
-    let usedCarryOver = 0
-    let usedCurrentYear = 0
 
-    // Jika masih ada saldo carry-over, gunakan itu dulu
-    const remainingCarryOver = Math.max(0, carryOverBalance - existingUsage.carryOver)
-    if (remainingCarryOver > 0) {
-      usedCarryOver = Math.min(remainingCarryOver, workingDays)
-      usedCurrentYear = workingDays - usedCarryOver
-    } else {
-      // Jika tidak ada sisa carry-over, gunakan saldo tahun berjalan
-      usedCurrentYear = workingDays
+    // Gunakan data yang dikirim dari frontend
+    let usedTwoYearsAgo = leaveRequestData.used_n2_year || 0
+    let usedCarryOver = leaveRequestData.used_carry_over_days || 0
+    let usedCurrentYear = leaveRequestData.used_current_year_days || 0
+
+    // Validasi bahwa data dari frontend sudah benar
+    const totalUsedFromFrontend = usedTwoYearsAgo + usedCarryOver + usedCurrentYear
+
+    // Jika data dari frontend tidak lengkap atau tidak sesuai, hitung ulang
+    if (totalUsedFromFrontend !== workingDays || (usedTwoYearsAgo === 0 && usedCarryOver === 0 && usedCurrentYear === 0)) {
+      console.log("Data dari frontend tidak lengkap, menghitung ulang...")
+
+      // Ambil penggunaan cuti yang sudah ada untuk tahun ini
+      const existingUsage = existingLeaves?.reduce((acc, leave) => {
+        const leaveYear = new Date(leave.start_date).getFullYear()
+        if (leaveYear === currentYear) {
+          acc.carryOver += leave.used_carry_over_days || 0
+          acc.currentYear += leave.used_current_year_days || 0
+          acc.twoYearsAgo += leave.used_n2_year || 0
+        }
+        return acc
+      }, { carryOver: 0, currentYear: 0, twoYearsAgo: 0 }) || { carryOver: 0, currentYear: 0, twoYearsAgo: 0 }
+
+      console.log("Existing usage:", existingUsage)
+
+      // Hitung saldo yang tersisa
+      const remainingTwoYearsAgo = Math.max(0, twoYearsAgoBalance - existingUsage.twoYearsAgo)
+      const remainingCarryOver = Math.max(0, carryOverBalance - existingUsage.carryOver)
+      const remainingCurrentYear = Math.max(0, currentYearBalance - existingUsage.currentYear)
+
+      // Reset nilai penggunaan
+      usedTwoYearsAgo = 0
+      usedCarryOver = 0
+      usedCurrentYear = 0
+
+      // Gunakan saldo 2 tahun lalu terlebih dahulu (jika ada)
+      if (remainingTwoYearsAgo > 0) {
+        usedTwoYearsAgo = Math.min(remainingTwoYearsAgo, workingDays)
+      }
+
+      // Kemudian gunakan saldo tahun lalu (jika ada)
+      if (remainingCarryOver > 0 && usedTwoYearsAgo < workingDays) {
+        const remainingDays = workingDays - usedTwoYearsAgo
+        usedCarryOver = Math.min(remainingCarryOver, remainingDays)
+      }
+
+      // Terakhir gunakan saldo tahun ini
+      const totalUsed = usedTwoYearsAgo + usedCarryOver
+      if (totalUsed < workingDays) {
+        usedCurrentYear = workingDays - totalUsed
+      }
     }
 
     console.log("Leave balance calculation:", {
       currentYear,
       previousYear,
+      twoYearsAgo,
       currentYearBalance,
       carryOverBalance,
-      existingUsage,
+      twoYearsAgoBalance,
       workingDays,
-      remainingCarryOver,
+      usedTwoYearsAgo,
       usedCarryOver,
       usedCurrentYear,
-      remainingCurrentYear: currentYearBalance - existingUsage.currentYear - usedCurrentYear
+      totalUsed: usedTwoYearsAgo + usedCarryOver + usedCurrentYear,
+      dataFromFrontend: {
+        used_n2_year: leaveRequestData.used_n2_year,
+        used_carry_over_days: leaveRequestData.used_carry_over_days,
+        used_current_year_days: leaveRequestData.used_current_year_days
+      }
     })
 
     // Validasi saldo cuti
-    const remainingCurrentYear = currentYearBalance - existingUsage.currentYear - usedCurrentYear
-    if (remainingCurrentYear < 0) {
+    const totalSaldo = twoYearsAgoBalance + carryOverBalance + currentYearBalance
+    const totalUsed = usedTwoYearsAgo + usedCarryOver + usedCurrentYear
+
+    if (totalUsed > totalSaldo) {
       return NextResponse.json({
         error: "Insufficient leave balance",
-        details: `Saldo cuti tidak mencukupi. Sisa saldo: ${remainingCurrentYear + usedCurrentYear} hari, permintaan: ${workingDays} hari`
+        details: `Saldo cuti tidak mencukupi. Total saldo: ${totalSaldo} hari, permintaan: ${workingDays} hari`
+      }, { status: 400 })
+    }
+
+    // Validasi bahwa total penggunaan sama dengan workingDays
+    if (totalUsed !== workingDays) {
+      return NextResponse.json({
+        error: "Invalid leave usage",
+        details: `Total penggunaan saldo (${totalUsed} hari) tidak sama dengan hari kerja (${workingDays} hari)`
       }, { status: 400 })
     }
 
     // Potong saldo cuti di tabel pegawai
     const updatedLeaveBalance = { ...leaveBalance }
+
+    // Potong saldo 2 tahun lalu jika digunakan
+    if (usedTwoYearsAgo > 0) {
+      const twoYearsAgoStr = twoYearsAgo.toString()
+      updatedLeaveBalance[twoYearsAgoStr] = Math.max(0, (updatedLeaveBalance[twoYearsAgoStr] || 0) - usedTwoYearsAgo)
+    }
 
     // Potong saldo carry over jika digunakan
     if (usedCarryOver > 0) {
@@ -299,18 +355,35 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert leave request into database using admin client
+    const insertData = {
+      id: leaveRequestId,
+      ...leaveRequestData,
+      saldo_carry: carryOverBalance,
+      saldo_current_year: currentYearBalance,
+      saldo_n2_year: twoYearsAgoBalance,
+      created_at: new Date().toISOString(),
+      used_carry_over_days: usedCarryOver,
+      used_current_year_days: usedCurrentYear,
+      used_n2_year: usedTwoYearsAgo,
+      leave_year: currentYear
+    }
+
+    console.log("Data yang akan disimpan ke database:", {
+      id: insertData.id,
+      user_id: insertData.user_id,
+      workingdays: insertData.workingdays,
+      used_n2_year: insertData.used_n2_year,
+      used_carry_over_days: insertData.used_carry_over_days,
+      used_current_year_days: insertData.used_current_year_days,
+      saldo_n2_year: insertData.saldo_n2_year,
+      saldo_carry: insertData.saldo_carry,
+      saldo_current_year: insertData.saldo_current_year,
+      total_used: insertData.used_n2_year + insertData.used_carry_over_days + insertData.used_current_year_days
+    })
+
     const { data, error } = await supabaseAdmin
       .from("leave_requests")
-      .insert({
-        id: leaveRequestId,
-        ...leaveRequestData,
-        saldo_carry: carryOverBalance,
-        saldo_current_year: currentYearBalance,
-        created_at: new Date().toISOString(),
-        used_carry_over_days: usedCarryOver,
-        used_current_year_days: usedCurrentYear,
-        leave_year: currentYear
-      })
+      .insert(insertData)
       .select()
       .single()
 

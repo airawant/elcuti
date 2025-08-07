@@ -26,6 +26,10 @@ export type LeaveRequest = {
   authorized_officer_signature_date?: string
   used_carry_over_days: number
   used_current_year_days: number
+  used_n2_year: number
+  saldo_n2_year: number
+  saldo_carry: number
+  saldo_current_year: number
   leave_year: number
   created_at: string
   updated_at?: string

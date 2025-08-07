@@ -9,10 +9,11 @@ import { LeaveCard } from "@/components/leave-card";
 import { LeaveCalendar } from "@/components/leave-calendar";
 import { useAuth } from "@/lib/auth-context";
 import { leaveTypes } from "@/lib/mock-data";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Bell, CheckSquare } from "lucide-react";
+import { Bell, Calendar, CheckSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { LeaveBalanceCard } from "@/components/leave-balance-card";
 import Link from "next/link";
 import type { LeaveRequest } from "@/lib/types";
 
@@ -65,12 +66,22 @@ export default function DashboardPage() {
   const unviewedCount = getUnviewedRequestsCount();
 
   // Get current and previous year
+  // Get current and previous years
   const currentYear = new Date().getFullYear().toString();
   const previousYear = (new Date().getFullYear() - 1).toString();
+  const twoYearsAgo = (new Date().getFullYear() - 2).toString();
 
   // Hitung penggunaan cuti dari tabel leave_requests
   const getUsedLeaveDays = () => {
     const usedLeave = {
+      twoYearsAgo: 0,
+      carryOver: 0,
+      currentYear: 0,
+      total: 0,
+    };
+
+    const pendingLeave = {
+      twoYearsAgo: 0,
       carryOver: 0,
       currentYear: 0,
       total: 0,
@@ -79,28 +90,59 @@ export default function DashboardPage() {
     leaveRequests
       .filter(
         (req) =>
-          req.user_id === user.id && req.type === "Cuti Tahunan" && req.status !== "Rejected" // Hanya hitung yang Pending atau Approved
+          req.user_id === user.id && req.type === "Cuti Tahunan" && req.status !== "Rejected"
       )
       .forEach((req) => {
-        usedLeave.carryOver += req.used_carry_over_days || 0;
-        usedLeave.currentYear += req.used_current_year_days || 0;
+        const twoYearsAgoUsed = req.used_n2_year || 0;
+        const carryOverUsed = req.used_carry_over_days || 0;
+        const currentYearUsed = req.used_current_year_days || 0;
+
+        if (req.status === "Approved") {
+          // Sudah terpakai (Approved)
+          usedLeave.twoYearsAgo += twoYearsAgoUsed;
+          usedLeave.carryOver += carryOverUsed;
+          usedLeave.currentYear += currentYearUsed;
+        } else if (req.status === "Pending") {
+          // Sedang diproses (Pending)
+          pendingLeave.twoYearsAgo += twoYearsAgoUsed;
+          pendingLeave.carryOver += carryOverUsed;
+          pendingLeave.currentYear += currentYearUsed;
+        }
       });
 
-    usedLeave.total = usedLeave.carryOver + usedLeave.currentYear;
-    return usedLeave;
+    usedLeave.total = usedLeave.twoYearsAgo + usedLeave.carryOver + usedLeave.currentYear;
+    pendingLeave.total = pendingLeave.twoYearsAgo + pendingLeave.carryOver + pendingLeave.currentYear;
+
+    return { usedLeave, pendingLeave };
   };
 
-  const usedLeaveDays = getUsedLeaveDays();
+  const { usedLeave, pendingLeave } = getUsedLeaveDays();
 
   // Hitung sisa saldo aktual
   const getRemainingBalance = () => {
     const saldoTahunLalu = user.leave_balance?.[previousYear] || 0;
     const saldoTahunIni = user.leave_balance?.[currentYear] || 0;
+    const saldoDuaTahunLalu = user.leave_balance?.[twoYearsAgo] || 0;
+
+    // Hitung sisa saldo setelah dikurangi yang sudah terpakai dan sedang diproses
+    const remainingTwoYearsAgo = Math.max(0, saldoDuaTahunLalu - usedLeave.twoYearsAgo - pendingLeave.twoYearsAgo);
+    const remainingCarryOver = Math.max(0, saldoTahunLalu - usedLeave.carryOver - pendingLeave.carryOver);
+    const remainingCurrentYear = Math.max(0, saldoTahunIni - usedLeave.currentYear - pendingLeave.currentYear);
 
     return {
-      carryOver: Math.max(0, saldoTahunLalu),
-      currentYear: Math.max(0, saldoTahunIni),
-      total: Math.max(0, saldoTahunLalu) + Math.max(0, saldoTahunIni),
+      twoYearsAgo: remainingTwoYearsAgo,
+      carryOver: remainingCarryOver,
+      currentYear: remainingCurrentYear,
+      total: remainingTwoYearsAgo + remainingCarryOver + remainingCurrentYear,
+      // Tambahkan informasi saldo awal dan penggunaan
+      initialBalance: {
+        twoYearsAgo: saldoDuaTahunLalu,
+        carryOver: saldoTahunLalu,
+        currentYear: saldoTahunIni,
+        total: saldoDuaTahunLalu + saldoTahunLalu + saldoTahunIni,
+      },
+      used: usedLeave,
+      pending: pendingLeave,
     };
   };
 
@@ -150,55 +192,72 @@ export default function DashboardPage() {
             </Card>
           )}
 
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-4">
+            {/* Card Saldo N-2 Tahun */}
+            <LeaveBalanceCard
+              title={`Saldo Cuti ${twoYearsAgo}`}
+              balance={remainingBalance.twoYearsAgo}
+              type="twoYearsAgo"
+              initialBalance={remainingBalance.initialBalance.twoYearsAgo}
+              used={usedLeave.twoYearsAgo}
+              pending={pendingLeave.twoYearsAgo}
+            />
+
             {/* Card Saldo Carry-Over */}
-            <div className="bg-white p-4 rounded-lg shadow-sm">
-              <h3 className="text-sm text-gray-500">Saldo Cuti N-1 Tahun</h3>
-              <div className="text-3xl font-bold">{remainingBalance.carryOver} hari</div>
-              <div className="text-sm text-gray-500">Dari Tahun {previousYear}</div>
-              <div className="mt-2">
-                <div className="text-sm text-red-500">
-                  Terpakai/Diproses: {usedLeaveDays.carryOver} hari
-                </div>
-                {/* <div className="text-sm text-green-500">
-                  Sisa Aktual:{" "}
-                  {Math.max(0, remainingBalance.carryOver - usedLeaveDays.carryOver)} hari
-                </div> */}
-              </div>
-            </div>
+            <LeaveBalanceCard
+              title={`Saldo Cuti ${previousYear}`}
+              balance={remainingBalance.carryOver}
+              type="carryOver"
+              initialBalance={remainingBalance.initialBalance.carryOver}
+              used={usedLeave.carryOver}
+              pending={pendingLeave.carryOver}
+            />
 
-            {/* Card Saldo Cuti Tahun Berjalan */}
-            <div className="bg-white p-4 rounded-lg shadow-sm">
-              <h3 className="text-sm text-gray-500">Saldo Cuti Tahun Ini</h3>
-              <div className="text-3xl font-bold">{remainingBalance.currentYear} hari</div>
-              <div className="text-sm text-gray-500">Tahun {currentYear}</div>
-              <div className="mt-2">
-                <div className="text-sm text-red-500">
-                  Terpakai/Diproses: {usedLeaveDays.currentYear} hari
-                </div>
-                {/* <div className="text-sm text-green-500">
-                  Sisa Aktual:{" "}
-                  {Math.max(0, remainingBalance.currentYear - usedLeaveDays.currentYear)} hari
-                </div> */}
-              </div>
-            </div>
+            {/* Card Saldo Tahun Berjalan */}
+            <LeaveBalanceCard
+              title={`Saldo Cuti ${currentYear}`}
+              balance={remainingBalance.currentYear}
+              type="current"
+              initialBalance={remainingBalance.initialBalance.currentYear}
+              used={usedLeave.currentYear}
+              pending={pendingLeave.currentYear}
+            />
 
-            {/* Card Total Sisa Cuti */}
-            <div className="bg-white p-4 rounded-lg shadow-sm">
-              <h3 className="text-sm text-gray-500">Total Saldo Cuti</h3>
-              <div className="text-3xl font-bold">
-                {remainingBalance.total} hari
-              </div>
-              <div className="text-sm text-gray-500">Total Tersedia</div>
-              <div className="mt-2">
-                <div className="text-sm text-red-500">
-                  Total Terpakai/Diproses: {usedLeaveDays.total} hari
+            {/* Card Total Saldo */}
+            <Card className="overflow-hidden">
+              <CardHeader className="p-4 bg-primary">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-white text-lg">Total Saldo Cuti</CardTitle>
+                  <Calendar className="h-6 w-6 text-white" />
                 </div>
-                {/* <div className="text-sm text-green-500">
-                  Sisa Aktual: {Math.max(0, remainingBalance.total - usedLeaveDays.total)} hari
-                </div> */}
-              </div>
-            </div>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="text-3xl font-bold">{remainingBalance.total}</div>
+                <div className="text-sm text-gray-500">Hari Tersisa</div>
+
+                {/* Informasi detail penggunaan */}
+                <div className="mt-4 space-y-2 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Saldo Awal:</span>
+                    <span className="font-medium">{remainingBalance.initialBalance.total} hari</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-red-600">Sudah Terpakai:</span>
+                    <span className="font-medium text-red-600">{usedLeave.total} hari</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-yellow-600">Sedang Diproses:</span>
+                    <span className="font-medium text-yellow-600">{pendingLeave.total} hari</span>
+                  </div>
+                  <div className="border-t pt-2 mt-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Total Digunakan:</span>
+                      <span className="font-medium text-gray-800">{usedLeave.total + pendingLeave.total} hari</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">

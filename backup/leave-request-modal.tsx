@@ -48,10 +48,8 @@ interface LeaveRequestSubmission {
   authorized_officer_signature_date: string | null;
   rejection_reason: string | null;
   leave_year: number;
-  used_n2_year?: number;
   used_carry_over_days?: number;
   used_current_year_days?: number;
-  saldo_n2_year: number;
   saldo_carry: number;
   saldo_current_year: number;
 }
@@ -91,7 +89,6 @@ export function LeaveRequestModal({
     address: "",
     phone: "",
     rejectionReason: "",
-    selectedLeaveBalance: "current", // Pilihan: current, carryOver, twoYearsAgo
 
     // First level approver (supervisor)
     supervisorId: null as number | null,
@@ -108,11 +105,6 @@ export function LeaveRequestModal({
     authorizedOfficerNIP: "",
     authorizedOfficerSigned: false,
     authorizedOfficerSignatureDate: "",
-
-    // Tambahkan pada state formData
-    usedTwoYearsAgo: 0,
-    usedPrevYear: 0,
-    usedCurrentYear: 0,
   });
 
   const [holidaysInRange, setHolidaysInRange] = useState<any[]>([]);
@@ -120,9 +112,7 @@ export function LeaveRequestModal({
   const [initialBalance, setInitialBalance] = useState(12);
   const [remainingBalance, setRemainingBalance] = useState(12);
   const [carryOverBalance, setCarryOverBalance] = useState(0);
-  const [twoYearsAgoBalance, setTwoYearsAgoBalance] = useState(0);
   const [remainingCarryOverBalance, setRemainingCarryOverBalance] = useState(0);
-  const [remainingTwoYearsAgoBalance, setRemainingTwoYearsAgoBalance] = useState(0);
   const [remainingCurrentYearBalance, setRemainingCurrentYearBalance] = useState(0);
   const [supervisorNIPInput, setSupervisorNIPInput] = useState("");
   const [authorizedOfficerNIPInput, setAuthorizedOfficerNIPInput] = useState("");
@@ -141,9 +131,7 @@ export function LeaveRequestModal({
         return {
           initialBalance: 12,
           carryOverBalance: 0,
-          twoYearsAgoBalance: 0,
           remainingCarryOverBalance: 0,
-          remainingTwoYearsAgoBalance: 0,
           remainingCurrentYearBalance: 0,
           remainingBalance: 12,
         };
@@ -154,9 +142,7 @@ export function LeaveRequestModal({
         return {
           initialBalance: 12,
           carryOverBalance: 0,
-          twoYearsAgoBalance: 0,
           remainingCarryOverBalance: 0,
-          remainingTwoYearsAgoBalance: 0,
           remainingCurrentYearBalance: 0,
           remainingBalance: 12,
         };
@@ -164,12 +150,10 @@ export function LeaveRequestModal({
 
       const currentYear = new Date().getFullYear();
       const previousYear = currentYear - 1;
-      const twoYearsAgo = currentYear - 2;
 
       // Ambil saldo dari leave_balance
       const currentYearBalance = targetUser.leave_balance[currentYear.toString()] || 0;
       const previousYearBalance = targetUser.leave_balance[previousYear.toString()] || 0;
-      const twoYearsAgoBalance = targetUser.leave_balance[twoYearsAgo.toString()] || 0;
 
       // Penggunaan cuti tetap dihitung dari leaveRequests
       const usedLeave = leaveRequests
@@ -201,16 +185,13 @@ export function LeaveRequestModal({
 
       // Hitung sisa saldo
       const remainingCarryOver = Math.max(0, previousYearBalance - usedCarryOver);
-      const remainingTwoYearsAgo = Math.max(0, twoYearsAgoBalance - 0); // Belum ada penggunaan dari 2 tahun lalu
       const remainingCurrentYear = Math.max(0, currentYearBalance - usedCurrentYear);
-      const remainingTotal = remainingCarryOver + remainingTwoYearsAgo + remainingCurrentYear;
+      const remainingTotal = remainingCarryOver + remainingCurrentYear;
 
       return {
         initialBalance: currentYearBalance,
         carryOverBalance: previousYearBalance,
-        twoYearsAgoBalance: twoYearsAgoBalance,
         remainingCarryOverBalance: remainingCarryOver,
-        remainingTwoYearsAgoBalance: remainingTwoYearsAgo,
         remainingCurrentYearBalance: remainingCurrentYear,
         remainingBalance: remainingTotal,
       };
@@ -230,9 +211,9 @@ export function LeaveRequestModal({
 
   // Initialize form data when the modal opens
   useEffect(() => {
-    if (!isOpen || !user) return;
+    if (!isOpen) return;
 
-    if (mode === "create") {
+    if (mode === "create" && user) {
       console.log("Initializing form data for create mode.");
       // For new requests, initialize with current user data, but preserve supervisor data if it exists
       setFormData((prev) => {
@@ -309,10 +290,8 @@ export function LeaveRequestModal({
         if (typeof balances !== "number") {
           setInitialBalance(balances.initialBalance);
           setCarryOverBalance(balances.carryOverBalance);
-          setTwoYearsAgoBalance(balances.twoYearsAgoBalance);
           setRemainingBalance(balances.remainingBalance);
           setRemainingCarryOverBalance(balances.remainingCarryOverBalance);
-          setRemainingTwoYearsAgoBalance(balances.remainingTwoYearsAgoBalance);
           setRemainingCurrentYearBalance(balances.remainingCurrentYearBalance);
         }
       }
@@ -361,21 +340,35 @@ export function LeaveRequestModal({
           "",
       }));
 
+      // Check if current user is the assigned supervisor
+      if (user && approverType === "supervisor" && user.id === requestData.supervisor_id) {
+        setIsValidSupervisor(true);
+        setSupervisorNIPInput(user.nip?.toString() || "");
+      }
+
+      // Check if current user is the authorized officer
+      if (
+        user &&
+        approverType === "authorized_officer" &&
+        user.id === requestData.authorized_officer_id
+      ) {
+        setIsValidAuthorizedOfficer(true);
+        setAuthorizedOfficerNIPInput(user.nip?.toString() || "");
+      }
+
       // Calculate leave balances for the requester
       if (requester && requester.id) {
         const balances = calculateLeaveBalances(requester.id);
         if (typeof balances !== "number") {
           setInitialBalance(balances.initialBalance);
           setCarryOverBalance(balances.carryOverBalance);
-          setTwoYearsAgoBalance(balances.twoYearsAgoBalance);
           setRemainingBalance(balances.remainingBalance);
           setRemainingCarryOverBalance(balances.remainingCarryOverBalance);
-          setRemainingTwoYearsAgoBalance(balances.remainingTwoYearsAgoBalance);
           setRemainingCurrentYearBalance(balances.remainingCurrentYearBalance);
         }
       }
     }
-  }, [isOpen, user, users, leaveRequests, mode, requestData, approverType, calculateLeaveBalances]);
+  }, [open, mode, user, requestData, approverType, users, calculateLeaveBalances]);
 
   useEffect(() => {
     console.log("Form data updated:", formData);
@@ -413,6 +406,15 @@ export function LeaveRequestModal({
 
   // Toggle supervisor signature
   const toggleSupervisorSignature = useCallback(() => {
+    if (!isValidSupervisor || mode !== "approve" || approverType !== "supervisor") {
+      toast({
+        title: "Validasi diperlukan",
+        description: "Anda harus memvalidasi identitas Anda terlebih dahulu",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setFormData((prev) => {
       const newSignedState = !prev.supervisorSigned;
       return {
@@ -426,23 +428,57 @@ export function LeaveRequestModal({
       title: "Dokumen ditandatangani",
       description: "Dokumen telah berhasil ditandatangani",
     });
-  }, [toast]);
+  }, [isValidSupervisor, mode, approverType, toast]);
 
   // Toggle authorized officer signature
   const toggleAuthorizedOfficerSignature = () => {
+    console.log("toggleAuthorizedOfficerSignature called");
+    console.log("Current conditions:", {
+      isValidAuthorizedOfficer,
+      mode,
+      approverType,
+      currentSignedState: formData.authorizedOfficerSigned,
+    });
+
+    if (
+      isValidAuthorizedOfficer &&
+      mode === "approve" &&
+      approverType === "authorized_officer"
+    ) {
+      const now = new Date().toISOString();
+      const newSignedState = !formData.authorizedOfficerSigned;
+
+      console.log("Updating authorized officer signature to:", newSignedState);
+
       setFormData((prev) => {
-      const newSignedState = !prev.authorizedOfficerSigned;
-      return {
+        const newState = {
           ...prev,
           authorizedOfficerSigned: newSignedState,
-        authorizedOfficerSignatureDate: newSignedState ? new Date().toISOString() : "",
+          authorizedOfficerSignatureDate: newSignedState ? now : "",
         };
+        console.log("New form state:", newState);
+        return newState;
       });
 
       toast({
-      title: "Dokumen ditandatangani",
-      description: "Dokumen telah berhasil ditandatangani",
+        title: newSignedState ? "Dokumen ditandatangani" : "Tanda tangan dibatalkan",
+        description: newSignedState
+          ? "Dokumen telah berhasil ditandatangani"
+          : "Tanda tangan Anda telah dibatalkan",
       });
+    } else {
+      console.log("Validation failed:", {
+        isValidAuthorizedOfficer,
+        mode,
+        approverType,
+      });
+
+      toast({
+        title: "Validasi diperlukan",
+        description: "Masukkan NIP Anda untuk memvalidasi identitas",
+        variant: "destructive",
+      });
+    }
   };
 
   // Handle supervisor selection
@@ -590,97 +626,58 @@ export function LeaveRequestModal({
     }
   };
 
-  // Fungsi validasi input saldo cuti
-  const validateLeaveUsage = (usedTwoYearsAgo: number, usedPrevYear: number, usedCurrentYear: number) => {
-    const totalUsed = usedTwoYearsAgo + usedPrevYear + usedCurrentYear;
-    const errors: string[] = [];
-
-    if (totalUsed !== formData.workingdays) {
-      errors.push(`Total penggunaan saldo (${totalUsed} hari) harus sama dengan jumlah hari cuti yang diajukan (${formData.workingdays} hari).`);
+  // Validate supervisor NIP
+  const validateSupervisorNIP = () => {
+    console.log("Validating supervisor NIP.");
+    // Check if the entered NIP matches the assigned supervisor
+    if (
+      supervisorNIPInput &&
+      formData.supervisorId &&
+      supervisorNIPInput === formData.supervisorId.toString() &&
+      user?.id.toString() === supervisorNIPInput
+    ) {
+      setIsValidSupervisor(true);
+      toast({
+        title: "Identitas tervalidasi",
+        description: "Anda dapat menandatangani dokumen ini",
+      });
+    } else {
+      setIsValidSupervisor(false);
+      toast({
+        title: "Validasi gagal",
+        description: "NIP tidak valid atau Anda bukan penandatangan yang ditunjuk",
+        variant: "destructive",
+      });
     }
-
-    if (usedTwoYearsAgo > twoYearsAgoBalance) {
-      errors.push(`Penggunaan saldo tahun N-2 tidak boleh lebih dari ${twoYearsAgoBalance} hari.`);
-    }
-
-    if (usedPrevYear > carryOverBalance) {
-      errors.push(`Penggunaan saldo tahun N-1 tidak boleh lebih dari ${carryOverBalance} hari.`);
-    }
-
-    if (usedCurrentYear > initialBalance) {
-      errors.push(`Penggunaan saldo tahun berjalan tidak boleh lebih dari ${initialBalance} hari.`);
-    }
-
-    return errors;
   };
 
-  // Handler perubahan input saldo cuti per tahun
-  const handleLeaveUsageChange = (field: 'usedTwoYearsAgo' | 'usedPrevYear' | 'usedCurrentYear', value: number) => {
-    setFormData((prev) => {
-      const newData = { ...prev, [field]: value };
-
-      // Auto-fill berdasarkan pilihan saldo
-      if (prev.selectedLeaveBalance && value > 0) {
-        const workingDays = prev.workingdays || 0;
-
-        switch (prev.selectedLeaveBalance) {
-          case "twoYearsAgo":
-            if (field === 'usedTwoYearsAgo') {
-              newData.usedPrevYear = 0;
-              newData.usedCurrentYear = 0;
-            }
-            break;
-          case "carryOver":
-            if (field === 'usedPrevYear') {
-              newData.usedTwoYearsAgo = 0;
-              newData.usedCurrentYear = 0;
-            }
-            break;
-          case "current":
-            if (field === 'usedCurrentYear') {
-              newData.usedTwoYearsAgo = 0;
-              newData.usedPrevYear = 0;
-            }
-            break;
-        }
-      }
-
-      return newData;
-    });
-  };
-
-  // Handler untuk perubahan pilihan saldo
-  const handleSelectedLeaveBalanceChange = (value: string) => {
-    setFormData((prev) => {
-      const workingDays = prev.workingdays || 0;
-      let usedTwoYearsAgo = 0;
-      let usedPrevYear = 0;
-      let usedCurrentYear = 0;
-
-      switch (value) {
-        case "twoYearsAgo":
-          usedTwoYearsAgo = Math.min(remainingTwoYearsAgoBalance, workingDays);
-          break;
-        case "carryOver":
-          usedPrevYear = Math.min(remainingCarryOverBalance, workingDays);
-          break;
-        case "current":
-          usedCurrentYear = Math.min(remainingCurrentYearBalance, workingDays);
-          break;
-      }
-
-      return {
-        ...prev,
-        selectedLeaveBalance: value,
-        usedTwoYearsAgo,
-        usedPrevYear,
-        usedCurrentYear
-      };
-    });
+  // Validate authorized officer NIP
+  const validateAuthorizedOfficerNIP = () => {
+    console.log("Validating authorized officer NIP.");
+    // Check if the entered NIP matches the authorized officer
+    if (
+      authorizedOfficerNIPInput &&
+      formData.authorizedOfficerId &&
+      authorizedOfficerNIPInput === formData.authorizedOfficerId.toString() &&
+      user?.id.toString() === authorizedOfficerNIPInput
+    ) {
+      setIsValidAuthorizedOfficer(true);
+      toast({
+        title: "Identitas tervalidasi",
+        description: "Anda dapat menandatangani dokumen ini",
+      });
+    } else {
+      setIsValidAuthorizedOfficer(false);
+      toast({
+        title: "Validasi gagal",
+        description: "NIP tidak valid atau Anda bukan pejabat yang berwenang",
+        variant: "destructive",
+      });
+    }
   };
 
   // Handle form submission for new leave request
-const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
@@ -747,79 +744,46 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         authorized_officer_signature_date: null,
         rejection_reason: null,
         leave_year: new Date(formData.startDate).getFullYear(),
-        saldo_n2_year: twoYearsAgoBalance,
         saldo_carry: carryOverBalance,
         saldo_current_year: initialBalance,
       };
 
-      // Hitung penggunaan saldo cuti berdasarkan input manual pengguna
+      // Hitung penggunaan saldo cuti
       if (formData.leaveType === "Cuti Tahunan") {
-        // Gunakan input manual dari pengguna
-        let usedTwoYearsAgo = formData.usedTwoYearsAgo || 0;
-        let usedCarryOver = formData.usedPrevYear || 0;
-        let usedCurrentYear = formData.usedCurrentYear || 0;
+        const currentYear = new Date(formData.startDate).getFullYear();
+        const previousYear = currentYear - 1;
 
-        // Jika input manual kosong, gunakan logika otomatis berdasarkan pilihan
-        if (usedTwoYearsAgo === 0 && usedCarryOver === 0 && usedCurrentYear === 0) {
-          // Tentukan penggunaan saldo berdasarkan pilihan pengguna
-          switch (formData.selectedLeaveBalance) {
-            case "twoYearsAgo":
-              usedTwoYearsAgo = Math.min(remainingTwoYearsAgoBalance, workingDays);
-              break;
-            case "carryOver":
-              usedCarryOver = Math.min(remainingCarryOverBalance, workingDays);
-              break;
-            case "current":
-              usedCurrentYear = Math.min(remainingCurrentYearBalance, workingDays);
-              break;
+        // Ambil data user untuk mendapatkan saldo cuti
+        const targetUser = users.find((u) => u.id === user.id);
+        if (!targetUser || !targetUser.leave_balance) {
+          throw new Error("Data saldo cuti tidak tersedia");
+        }
+
+        const previousYearBalance = targetUser.leave_balance[previousYear.toString()] || 0;
+        let usedCarryOver = 0;
+        let usedCurrentYear = 0;
+
+        if (workingDays > 0) {
+          // Jika ada saldo tahun lalu, gunakan itu dulu
+          if (previousYearBalance > 0) {
+            usedCarryOver = Math.min(previousYearBalance, workingDays);
+            usedCurrentYear = Math.max(0, workingDays - usedCarryOver);
+          } else {
+            // Jika tidak ada saldo tahun lalu, gunakan saldo tahun ini
+            usedCurrentYear = workingDays;
           }
         }
 
-        // Validasi bahwa total penggunaan sama dengan workingDays
-        const totalUsed = usedTwoYearsAgo + usedCarryOver + usedCurrentYear;
-        if (totalUsed !== workingDays) {
-          throw new Error(`Total penggunaan saldo (${totalUsed} hari) tidak sama dengan hari kerja (${workingDays} hari)`);
-        }
-
-        // Validasi bahwa penggunaan tidak melebihi saldo yang tersedia
-        if (usedTwoYearsAgo > remainingTwoYearsAgoBalance) {
-          throw new Error(`Penggunaan saldo tahun N-2 (${usedTwoYearsAgo} hari) melebihi saldo yang tersedia (${remainingTwoYearsAgoBalance} hari)`);
-        }
-        if (usedCarryOver > remainingCarryOverBalance) {
-          throw new Error(`Penggunaan saldo tahun N-1 (${usedCarryOver} hari) melebihi saldo yang tersedia (${remainingCarryOverBalance} hari)`);
-        }
-        if (usedCurrentYear > remainingCurrentYearBalance) {
-          throw new Error(`Penggunaan saldo tahun berjalan (${usedCurrentYear} hari) melebihi saldo yang tersedia (${remainingCurrentYearBalance} hari)`);
-        }
-
         // Tambahkan data penggunaan saldo ke submissionData
-        submissionData.used_n2_year = usedTwoYearsAgo;
         submissionData.used_carry_over_days = usedCarryOver;
         submissionData.used_current_year_days = usedCurrentYear;
-        submissionData.saldo_n2_year = twoYearsAgoBalance; // Saldo awal, bukan sisa
-        submissionData.saldo_carry = carryOverBalance; // Saldo awal, bukan sisa
-        submissionData.saldo_current_year = initialBalance; // Saldo awal, bukan sisa
 
         console.log("Detail penggunaan saldo:", {
           workingDays,
-          selectedBalance: formData.selectedLeaveBalance,
-          usedTwoYearsAgo,
+          previousYearBalance,
           usedCarryOver,
-          usedCurrentYear,
-          totalUsed,
-          twoYearsAgoBalance,
-          carryOverBalance,
-          initialBalance,
-          remainingTwoYearsAgoBalance,
-          remainingCarryOverBalance,
-          remainingCurrentYearBalance
+          usedCurrentYear
         });
-      }
-
-      // Validasi penggunaan saldo cuti
-      const usageErrors = validateLeaveUsage(formData.usedTwoYearsAgo, formData.usedPrevYear, formData.usedCurrentYear);
-      if (usageErrors.length > 0) {
-        throw new Error(usageErrors.join("\n"));
       }
 
       console.log("Mengirim data permintaan cuti:", submissionData);
@@ -909,7 +873,17 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   // Handle approval/rejection by an authorized officer
   const handleAuthorizedOfficerAction = (status: "Approved" | "Rejected") => {
     console.log("Handling authorized officer action:", status);
-    if (!formData.authorizedOfficerSigned) {
+    if (!isValidAuthorizedOfficer) {
+      toast({
+        title: "Validasi diperlukan",
+        description: "Anda harus memvalidasi identitas Anda terlebih dahulu",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Hanya cek tanda tangan jika status Approved
+    if (status === "Approved" && !formData.authorizedOfficerSigned) {
       toast({
         title: "Tanda tangan diperlukan",
         description: "Anda harus menandatangani dokumen sebelum menyetujui",
@@ -1215,145 +1189,11 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
             <div className="border rounded-md overflow-hidden">
               <div className="bg-gray-100 px-4 py-2 font-medium">V. CATATAN CUTI</div>
               <div className="p-4">
-                {/* Input pemakaian saldo per tahun */}
-                {formData.leaveType === "Cuti Tahunan" && mode === "create" && (
-                  <div className="mb-4">
-                    <div className="font-medium mb-2">Penggunaan Saldo Cuti per Tahun</div>
-
-                    {/* Pilihan saldo otomatis */}
-                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                      <div className="text-sm font-medium text-blue-800 mb-2">Pilihan Saldo Otomatis:</div>
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          type="button"
-                          variant={formData.selectedLeaveBalance === "twoYearsAgo" ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => handleSelectedLeaveBalanceChange("twoYearsAgo")}
-                          disabled={remainingTwoYearsAgoBalance <= 0}
-                        >
-                          Saldo N-2 ({remainingTwoYearsAgoBalance} hari)
-                        </Button>
-                        <Button
-                          type="button"
-                          variant={formData.selectedLeaveBalance === "carryOver" ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => handleSelectedLeaveBalanceChange("carryOver")}
-                          disabled={remainingCarryOverBalance <= 0}
-                        >
-                          Saldo N-1 ({remainingCarryOverBalance} hari)
-                        </Button>
-                        <Button
-                          type="button"
-                          variant={formData.selectedLeaveBalance === "current" ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => handleSelectedLeaveBalanceChange("current")}
-                          disabled={remainingCurrentYearBalance <= 0}
-                        >
-                          Saldo Tahun Ini ({remainingCurrentYearBalance} hari)
-                        </Button>
-                      </div>
-                      <div className="text-xs text-blue-600 mt-2">
-                        Atau isi manual di tabel di bawah ini
-                      </div>
-                    </div>
-
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full text-sm border rounded-md">
-                        <thead>
-                          <tr className="bg-gray-100 dark:bg-gray-800">
-                            <th className="px-2 py-1 border">Tahun</th>
-                            <th className="px-2 py-1 border">Saldo Tersedia</th>
-                            <th className="px-2 py-1 border">Pakai Saldo</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr>
-                            <td className="px-2 py-1 border font-medium">{new Date().getFullYear() - 2}</td>
-                            <td className="px-2 py-1 border">{remainingTwoYearsAgoBalance} hari</td>
-                            <td className="px-2 py-1 border">
-                              <Input
-                                type="number"
-                                min={0}
-                                max={remainingTwoYearsAgoBalance}
-                                value={formData.usedTwoYearsAgo}
-                                onChange={e => handleLeaveUsageChange('usedTwoYearsAgo', Number(e.target.value))}
-                                className="w-24"
-                                disabled={mode !== "create"}
-                              />
-                            </td>
-                          </tr>
-                          <tr>
-                            <td className="px-2 py-1 border font-medium">{new Date().getFullYear() - 1}</td>
-                            <td className="px-2 py-1 border">{remainingCarryOverBalance} hari</td>
-                            <td className="px-2 py-1 border">
-                              <Input
-                                type="number"
-                                min={0}
-                                max={remainingCarryOverBalance}
-                                value={formData.usedPrevYear}
-                                onChange={e => handleLeaveUsageChange('usedPrevYear', Number(e.target.value))}
-                                className="w-24"
-                                disabled={mode !== "create"}
-                              />
-                            </td>
-                          </tr>
-                          <tr>
-                            <td className="px-2 py-1 border font-medium">{new Date().getFullYear()}</td>
-                            <td className="px-2 py-1 border">{remainingCurrentYearBalance} hari</td>
-                            <td className="px-2 py-1 border">
-                              <Input
-                                type="number"
-                                min={0}
-                                max={remainingCurrentYearBalance}
-                                value={formData.usedCurrentYear}
-                                onChange={e => handleLeaveUsageChange('usedCurrentYear', Number(e.target.value))}
-                                className="w-24"
-                                disabled={mode !== "create"}
-                              />
-                            </td>
-                          </tr>
-                          <tr className="bg-gray-50">
-                            <td className="px-2 py-1 border font-medium">Total</td>
-                            <td className="px-2 py-1 border font-medium">
-                              {remainingTwoYearsAgoBalance + remainingCarryOverBalance + remainingCurrentYearBalance} hari
-                            </td>
-                            <td className="px-2 py-1 border font-medium">
-                              <span className={cn(
-                                "px-2 py-1 rounded text-xs",
-                                (formData.usedTwoYearsAgo + formData.usedPrevYear + formData.usedCurrentYear) === formData.workingdays
-                                  ? "bg-green-100 text-green-800"
-                                  : (formData.usedTwoYearsAgo + formData.usedPrevYear + formData.usedCurrentYear) > formData.workingdays
-                                  ? "bg-red-100 text-red-800"
-                                  : "bg-yellow-100 text-yellow-800"
-                              )}>
-                                {formData.usedTwoYearsAgo + formData.usedPrevYear + formData.usedCurrentYear} / {formData.workingdays} hari
-                              </span>
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                    {/* Validasi */}
-                    {(() => {
-                      const errors = validateLeaveUsage(formData.usedTwoYearsAgo, formData.usedPrevYear, formData.usedCurrentYear);
-                      return errors.length > 0 ? (
-                        <div className="mt-2 text-red-600 text-xs space-y-1">
-                          {errors.map((err: string, idx: number) => <div key={idx}>{err}</div>)}
-                        </div>
-                      ) : null;
-                    })()}
-                  </div>
-                )}
-                {/* Komponen info saldo cuti */}
                 <LeaveBalanceInfo
                   workingDays={formData.workingdays}
                   leaveType={formData.leaveType}
                   userId={user?.id}
                   mode={mode}
-                  selectedLeaveBalance={formData.selectedLeaveBalance as 'current' | 'twoYearsAgo' | 'carryOver'}
-                  usedTwoYearsAgo={formData.usedTwoYearsAgo}
-                  usedPrevYear={formData.usedPrevYear}
-                  usedCurrentYear={formData.usedCurrentYear}
                 />
               </div>
             </div>
@@ -1479,24 +1319,96 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                 )}
 
                 {mode === "approve" && approverType === "supervisor" && (
+                  <div className="pt-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="supervisor-nip">Validasi NIP Atasan</Label>
+                        <div className="flex space-x-2">
+                          <Input
+                            id="supervisor-nip"
+                            value={supervisorNIPInput}
+                            onChange={(e) => setSupervisorNIPInput(e.target.value)}
+                            placeholder="Masukkan NIP Anda untuk validasi"
+                            disabled={isValidSupervisor}
+                          />
+                          <Button
+                            variant="outline"
+                            onClick={validateSupervisorNIP}
+                            disabled={isValidSupervisor}
+                          >
+                            Validasi
+                          </Button>
+                        </div>
+                      </div>
+                      <div>
+                        <Label>Status Validasi</Label>
+                        <div
+                          className={cn(
+                            "mt-2 px-3 py-1 rounded-md flex items-center",
+                            isValidSupervisor
+                              ? "bg-green-100 text-green-800"
+                              : "bg-yellow-100 text-yellow-800"
+                          )}
+                        >
+                          {isValidSupervisor ? (
+                            <>
+                              <Check className="h-4 w-4 mr-2" />
+                              Tervalidasi
+                            </>
+                          ) : (
+                            <>
+                              <Lock className="h-4 w-4 mr-2" />
+                              Belum Tervalidasi
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex flex-col items-center pt-4">
+                  {mode === "create" ? (
+                    <div className="my-2 px-4 py-2 bg-gray-100 text-gray-800 rounded-md font-medium">
+                      {"{Belum Ditandatangani}"}
+                    </div>
+                  ) : mode === "approve" && approverType === "supervisor" ? (
                     <Button
                       type="button"
-                      onClick={toggleSupervisorSignature}
+                      onClick={() => {
+                        console.log("Supervisor sign button clicked");
+                        console.log("isValidSupervisor:", isValidSupervisor);
+                        console.log("mode:", mode);
+                        console.log("approverType:", approverType);
+                        toggleSupervisorSignature();
+                      }}
                       variant={formData.supervisorSigned ? "default" : "outline"}
+                      disabled={!isValidSupervisor}
                       className="my-2"
                     >
                       {formData.supervisorSigned ? "TERTANDA" : "Tanda Tangan Di Atas Nama"}
                     </Button>
+                  ) : (
+                    <div
+                      className={cn(
+                        "my-2 px-4 py-2 rounded-md font-medium",
+                        formData.supervisorSigned
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-800"
+                      )}
+                    >
+                      {formData.supervisorSigned ? "TERTANDA" : "{Belum Ditandatangani}"}
+                    </div>
+                  )}
                   <p className="font-medium">{formData.supervisorName}</p>
                   <p className="text-sm">NIP. {formData.supervisorNIP || "-"}</p>
                   {formData.supervisorSignatureDate && (
                     <p className="text-xs text-gray-500 mt-1">
-                        Ditandatangani pada: {format(new Date(formData.supervisorSignatureDate), "dd MMM yyyy HH:mm")}
+                      Ditandatangani pada:{" "}
+                      {format(new Date(formData.supervisorSignatureDate), "dd MMM yyyy HH:mm")}
                     </p>
                   )}
                 </div>
-                )}
               </div>
             </div>
 
@@ -1578,24 +1490,105 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                 )}
 
                 {mode === "approve" && approverType === "authorized_officer" && (
+                  <div className="pt-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="authorized-officer-nip">Validasi NIP Pejabat</Label>
+                        <div className="flex space-x-2">
+                          <Input
+                            id="authorized-officer-nip"
+                            value={authorizedOfficerNIPInput}
+                            onChange={(e) => setAuthorizedOfficerNIPInput(e.target.value)}
+                            placeholder="Masukkan NIP Anda untuk validasi"
+                            disabled={isValidAuthorizedOfficer}
+                          />
+                          <Button
+                            variant="outline"
+                            onClick={validateAuthorizedOfficerNIP}
+                            disabled={isValidAuthorizedOfficer}
+                          >
+                            Validasi
+                          </Button>
+                        </div>
+                      </div>
+                      <div>
+                        <Label>Status Validasi</Label>
+                        <div
+                          className={cn(
+                            "mt-2 px-3 py-1 rounded-md flex items-center",
+                            isValidAuthorizedOfficer
+                              ? "bg-green-100 text-green-800"
+                              : "bg-yellow-100 text-yellow-800"
+                          )}
+                        >
+                          {isValidAuthorizedOfficer ? (
+                            <>
+                              <Check className="h-4 w-4 mr-2" />
+                              Tervalidasi
+                            </>
+                          ) : (
+                            <>
+                              <Lock className="h-4 w-4 mr-2" />
+                              Belum Tervalidasi
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex flex-col items-center pt-4">
+                  {mode === "create" ? (
+                    <div className="my-2 px-4 py-2 bg-gray-100 text-gray-800 rounded-md font-medium">
+                      {"{Belum Ditandatangani}"}
+                    </div>
+                  ) : mode === "approve" && approverType === "authorized_officer" ? (
                     <Button
                       type="button"
-                      onClick={toggleAuthorizedOfficerSignature}
+                      onClick={() => {
+                        console.log("Authorized officer sign button clicked");
+                        console.log("isValidAuthorizedOfficer:", isValidAuthorizedOfficer);
+                        console.log("mode:", mode);
+                        console.log("approverType:", approverType);
+                        toggleAuthorizedOfficerSignature();
+                      }}
                       variant={formData.authorizedOfficerSigned ? "default" : "outline"}
+                      disabled={!isValidAuthorizedOfficer}
                       className="my-2"
                     >
-                      {formData.authorizedOfficerSigned ? "TERTANDA" : "Tanda Tangan Di Atas Nama"}
+                      {formData.authorizedOfficerSigned
+                        ? "TERTANDA"
+                        : "Tanda Tangan Di Atas Nama"}
                     </Button>
-                    <p className="font-medium">{formData.authorizedOfficerName || "Pilih Pejabat Berwenang"}</p>
+                  ) : (
+                    <div
+                      className={cn(
+                        "my-2 px-4 py-2 rounded-md font-medium",
+                        formData.authorizedOfficerSigned
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-800"
+                      )}
+                    >
+                      {formData.authorizedOfficerSigned
+                        ? "TERTANDA"
+                        : "{Belum Ditandatangani}"}
+                    </div>
+                  )}
+                  <p className="font-medium">
+                    {formData.authorizedOfficerName || "Pilih Pejabat Berwenang"}
+                  </p>
                   <p className="text-sm">NIP. {formData.authorizedOfficerNIP || "-"}</p>
                   {formData.authorizedOfficerSignatureDate && (
                     <p className="text-xs text-gray-500 mt-1">
-                        Ditandatangani pada: {format(new Date(formData.authorizedOfficerSignatureDate), "dd MMM yyyy HH:mm")}
+                      Ditandatangani pada:{" "}
+                      {format(
+                        new Date(formData.authorizedOfficerSignatureDate),
+                        "dd MMM yyyy HH:mm"
+                      )}
                     </p>
                   )}
                 </div>
-                )}
               </div>
             </div>
 
@@ -1663,7 +1656,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                             type="button"
                             variant="destructive"
                             onClick={() => handleSupervisorAction("Rejected")}
-                            disabled={!formData.supervisorSigned}
+                            disabled={!isValidSupervisor || !formData.rejectionReason}
                           >
                             Konfirmasi Penolakan
                           </Button>
@@ -1674,7 +1667,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                             type="button"
                             variant="destructive"
                             onClick={() => setShowRejectionForm(true)}
-                            disabled={!formData.supervisorSigned}
+                            disabled={!isValidSupervisor}
                           >
                             <X className="mr-2 h-4 w-4" />
                             Tolak
@@ -1682,7 +1675,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                           <Button
                             type="button"
                             onClick={() => handleSupervisorAction("Approved")}
-                            disabled={!formData.supervisorSigned}
+                            disabled={!isValidSupervisor || !formData.supervisorSigned}
                           >
                             <Check className="mr-2 h-4 w-4" />
                             Setujui
@@ -1714,7 +1707,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                             type="button"
                             variant="destructive"
                             onClick={() => handleAuthorizedOfficerAction("Rejected")}
-                            disabled={!formData.authorizedOfficerSigned}
+                            disabled={!isValidAuthorizedOfficer || !formData.rejectionReason}
                           >
                             Konfirmasi Penolakan
                           </Button>
@@ -1725,7 +1718,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                             type="button"
                             variant="destructive"
                             onClick={() => setShowRejectionForm(true)}
-                            disabled={!formData.authorizedOfficerSigned}
+                            disabled={!isValidAuthorizedOfficer}
                           >
                             <X className="mr-2 h-4 w-4" />
                             Tolak
@@ -1733,7 +1726,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                           <Button
                             type="button"
                             onClick={() => handleAuthorizedOfficerAction("Approved")}
-                            disabled={!formData.authorizedOfficerSigned}
+                            disabled={!isValidAuthorizedOfficer || !formData.authorizedOfficerSigned}
                           >
                             <Check className="mr-2 h-4 w-4" />
                             Setujui
