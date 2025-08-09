@@ -118,31 +118,17 @@ export default function DashboardPage() {
 
   const { usedLeave, pendingLeave } = getUsedLeaveDays();
 
-  // Hitung sisa saldo aktual
+  // Hitung sisa saldo aktual langsung dari tabel pegawai (leave_balance)
   const getRemainingBalance = () => {
     const saldoTahunLalu = user.leave_balance?.[previousYear] || 0;
     const saldoTahunIni = user.leave_balance?.[currentYear] || 0;
     const saldoDuaTahunLalu = user.leave_balance?.[twoYearsAgo] || 0;
 
-    // Hitung sisa saldo setelah dikurangi yang sudah terpakai dan sedang diproses
-    const remainingTwoYearsAgo = Math.max(0, saldoDuaTahunLalu - usedLeave.twoYearsAgo - pendingLeave.twoYearsAgo);
-    const remainingCarryOver = Math.max(0, saldoTahunLalu - usedLeave.carryOver - pendingLeave.carryOver);
-    const remainingCurrentYear = Math.max(0, saldoTahunIni - usedLeave.currentYear - pendingLeave.currentYear);
-
     return {
-      twoYearsAgo: remainingTwoYearsAgo,
-      carryOver: remainingCarryOver,
-      currentYear: remainingCurrentYear,
-      total: remainingTwoYearsAgo + remainingCarryOver + remainingCurrentYear,
-      // Tambahkan informasi saldo awal dan penggunaan
-      initialBalance: {
-        twoYearsAgo: saldoDuaTahunLalu,
-        carryOver: saldoTahunLalu,
-        currentYear: saldoTahunIni,
-        total: saldoDuaTahunLalu + saldoTahunLalu + saldoTahunIni,
-      },
-      used: usedLeave,
-      pending: pendingLeave,
+      twoYearsAgo: Math.max(0, saldoDuaTahunLalu),
+      carryOver: Math.max(0, saldoTahunLalu),
+      currentYear: Math.max(0, saldoTahunIni),
+      total: Math.max(0, saldoDuaTahunLalu) + Math.max(0, saldoTahunLalu) + Math.max(0, saldoTahunIni),
     };
   };
 
@@ -198,7 +184,6 @@ export default function DashboardPage() {
               title={`Saldo Cuti ${twoYearsAgo}`}
               balance={remainingBalance.twoYearsAgo}
               type="twoYearsAgo"
-              initialBalance={remainingBalance.initialBalance.twoYearsAgo}
               used={usedLeave.twoYearsAgo}
               pending={pendingLeave.twoYearsAgo}
             />
@@ -208,7 +193,6 @@ export default function DashboardPage() {
               title={`Saldo Cuti ${previousYear}`}
               balance={remainingBalance.carryOver}
               type="carryOver"
-              initialBalance={remainingBalance.initialBalance.carryOver}
               used={usedLeave.carryOver}
               pending={pendingLeave.carryOver}
             />
@@ -218,7 +202,6 @@ export default function DashboardPage() {
               title={`Saldo Cuti ${currentYear}`}
               balance={remainingBalance.currentYear}
               type="current"
-              initialBalance={remainingBalance.initialBalance.currentYear}
               used={usedLeave.currentYear}
               pending={pendingLeave.currentYear}
             />
@@ -235,12 +218,8 @@ export default function DashboardPage() {
                 <div className="text-3xl font-bold">{remainingBalance.total}</div>
                 <div className="text-sm text-gray-500">Hari Tersisa</div>
 
-                {/* Informasi detail penggunaan */}
+                {/* Informasi detail penggunaan (tanpa menghitung saldo sisa) */}
                 <div className="mt-4 space-y-2 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Saldo Awal:</span>
-                    <span className="font-medium">{remainingBalance.initialBalance.total} hari</span>
-                  </div>
                   <div className="flex justify-between">
                     <span className="text-red-600">Sudah Terpakai:</span>
                     <span className="font-medium text-red-600">{usedLeave.total} hari</span>

@@ -16,7 +16,6 @@ export function LeaveBalanceCard({
   title,
   balance,
   type,
-  initialBalance,
   used = 0,
   pending = 0
 }: LeaveBalanceCardProps) {
@@ -45,23 +44,17 @@ export function LeaveBalanceCard({
         <div className="text-3xl font-bold">{balance}</div>
         <div className="text-sm text-gray-500">Hari Tersisa</div>
 
-        {/* Informasi detail jika tersedia */}
-        {initialBalance !== undefined && (
-          <div className="mt-4 space-y-1 text-xs">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Awal:</span>
-              <span className="font-medium">{initialBalance} hari</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-red-600">Terpakai:</span>
-              <span className="font-medium text-red-600">{used} hari</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-yellow-600">Diproses:</span>
-              <span className="font-medium text-yellow-600">{pending} hari</span>
-            </div>
+        {/* Informasi detail selalu ditampilkan */}
+        <div className="mt-4 space-y-1 text-xs">
+          <div className="flex justify-between">
+            <span className="text-red-600">Sudah Terpakai:</span>
+            <span className="font-medium text-red-600">{used} hari</span>
           </div>
-        )}
+          <div className="flex justify-between">
+            <span className="text-yellow-600">Sedang Diproses:</span>
+            <span className="font-medium text-yellow-600">{pending} hari</span>
+          </div>
+        </div>
       </CardContent>
     </Card>
   )

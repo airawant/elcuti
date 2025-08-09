@@ -548,6 +548,16 @@ export async function PATCH(request: NextRequest) {
           alasan: currentRequest.reason || "",
               saldoawal_n1: currentRequest.saldo_carry,
               saldo_ntahun: currentRequest.saldo_current_year,
+              saldo_n2_tahun: currentRequest.saldo_n2_year || 0,
+              saldo_digunakan: {
+                n2_tahun: currentRequest.used_n2_year || 0,
+                carry_over: currentRequest.used_carry_over_days || 0,
+                tahun_berjalan: currentRequest.used_current_year_days || 0,
+                total: (currentRequest.used_n2_year || 0) +
+                       (currentRequest.used_carry_over_days || 0) +
+                       (currentRequest.used_current_year_days || 0)
+              },
+              masa_kerja: currentRequest.requester?.masa_kerja || "",
           nama_supervisor: currentRequest.supervisor?.name || "",
           nip_supervisor: currentRequest.supervisor?.nip || "",
           nama_officier: currentRequest.authorized_officer?.name || "",

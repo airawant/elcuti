@@ -13,6 +13,7 @@ const registerSchema = z.object({
   email: z.string().email("Please enter a valid email"),
   phone: z.string().optional(),
   address: z.string().optional(),
+  masa_kerja: z.string().optional(),
   isapprover: z.boolean().optional(),
   isApprover: z.boolean().optional(),
   isauthorizedofficer: z.boolean().optional(),
@@ -37,9 +38,11 @@ export async function POST(request: NextRequest) {
     const isApproverValue = body.isApprover === true || body.isapprover === true;
     const isAuthorizedOfficerValue = body.isAuthorizedOfficer === true || body.isauthorizedofficer === true;
     const workUnitValue = body.workUnit || body.workunit || '';
+    const masaKerjaValue = body.masa_kerja || null;
 
     console.log("[REGISTER] Direct field extract:", {
       workUnit_direct: workUnitValue,
+      masa_kerja_direct: masaKerjaValue,
       isApprover_direct: isApproverValue,
       isAuthorizedOfficer_direct: isAuthorizedOfficerValue
     });
@@ -109,6 +112,7 @@ export async function POST(request: NextRequest) {
       email: userData.email,
       phone: userData.phone,
       address: userData.address,
+      masa_kerja: masaKerjaValue,
       isapprover: isApproverValue,
       isauthorizedofficer: isAuthorizedOfficerValue,
       password: hashedPassword,
@@ -119,6 +123,7 @@ export async function POST(request: NextRequest) {
       ...dbData,
       password: '[REDACTED]',
       workunit: dbData.workunit || 'not set',
+      masa_kerja: dbData.masa_kerja,
       isapprover: dbData.isapprover || false,
       isauthorizedofficer: dbData.isauthorizedofficer || false,
       leave_balance: dbData.leave_balance
@@ -136,12 +141,13 @@ export async function POST(request: NextRequest) {
         email: dbData.email,
         phone: dbData.phone,
         address: dbData.address,
+        masa_kerja: dbData.masa_kerja,
         isapprover: dbData.isapprover,
         isauthorizedofficer: dbData.isauthorizedofficer,
         password: dbData.password,
         leave_balance: dbData.leave_balance
       })
-      .select("id, nip, name, role, position, workunit, email, phone, address, isapprover, isauthorizedofficer, leave_balance")
+      .select("id, nip, name, role, position, workunit, email, phone, address, masa_kerja, isapprover, isauthorizedofficer, leave_balance")
       .single()
 
     if (createError) {

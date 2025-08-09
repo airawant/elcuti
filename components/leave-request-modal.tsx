@@ -200,10 +200,10 @@ export function LeaveRequestModal({
         .reduce((total, req) => total + (req.used_current_year_days || 0), 0);
 
       // Hitung sisa saldo
-      const remainingCarryOver = Math.max(0, previousYearBalance - usedCarryOver);
-      const remainingTwoYearsAgo = Math.max(0, twoYearsAgoBalance - 0); // Belum ada penggunaan dari 2 tahun lalu
-      const remainingCurrentYear = Math.max(0, currentYearBalance - usedCurrentYear);
-      const remainingTotal = remainingCarryOver + remainingTwoYearsAgo + remainingCurrentYear;
+    const remainingCarryOver = previousYearBalance; // Gunakan nilai langsung dari leave_balance
+    const remainingTwoYearsAgo = twoYearsAgoBalance; // Gunakan nilai langsung dari leave_balance
+    const remainingCurrentYear = currentYearBalance; // Gunakan nilai langsung dari leave_balance
+    const remainingTotal = remainingCarryOver + remainingTwoYearsAgo + remainingCurrentYear;
 
       return {
         initialBalance: currentYearBalance,
@@ -260,12 +260,30 @@ export function LeaveRequestModal({
         const resetSupervisorData = prev.supervisorId === null;
         const resetOfficerData = prev.authorizedOfficerId === null;
 
+        // Format masa kerja dari database jika tersedia
+        let formattedMasaKerja = "";
+        if (user.masa_kerja) {
+          // Jika masa_kerja adalah string tanggal, konversi ke format yang sesuai
+          try {
+            const masaKerjaDate = new Date(user.masa_kerja);
+            const today = new Date();
+            const yearDiff = today.getFullYear() - masaKerjaDate.getFullYear();
+            formattedMasaKerja = `${yearDiff} tahun`;
+          } catch (e) {
+            // Jika gagal parsing, gunakan nilai asli
+            formattedMasaKerja = user.masa_kerja;
+          }
+        } else {
+          formattedMasaKerja = "0 tahun";
+        }
+
         return {
           ...prev,
           name: user.name || "",
           nip: user.nip?.toString() || "",
           position: user.position || "",
           workUnit: user.workunit || "Subbag. Tata Usaha Kankemenag Kota Tanjungpinang",
+          yearsOfService: formattedMasaKerja, // Gunakan masa kerja dari database
           leaveType: "Cuti Tahunan",
 
           // Gunakan data supervisor yang sudah ada jika ada
@@ -323,13 +341,30 @@ export function LeaveRequestModal({
       const supervisor = users.find((u) => u.id === requestData.supervisor_id);
       const authorizedOfficer = users.find((u) => u.id === requestData.authorized_officer_id);
 
+      // Format masa kerja dari database jika tersedia
+      let formattedMasaKerja = "";
+      if (requester?.masa_kerja) {
+        // Jika masa_kerja adalah string tanggal, konversi ke format yang sesuai
+        try {
+          const masaKerjaDate = new Date(requester.masa_kerja);
+          const today = new Date();
+          const yearDiff = today.getFullYear() - masaKerjaDate.getFullYear();
+          formattedMasaKerja = `${yearDiff} tahun`;
+        } catch (e) {
+          // Jika gagal parsing, gunakan nilai asli
+          formattedMasaKerja = requester.masa_kerja;
+        }
+      } else {
+        formattedMasaKerja = "0 tahun";
+      }
+
       setFormData((prev) => ({
         ...prev,
         name: requester?.name || "",
         nip: requester?.nip?.toString() || "",
         position: requester?.position || "",
         workUnit: requester?.workunit || "Subbag. Tata Usaha Kankemenag Kota Tanjungpinang",
-        yearsOfService: "2 tahun",
+        yearsOfService: formattedMasaKerja, // Gunakan masa kerja dari database
         leaveType: requestData.type || "Cuti Tahunan",
         leaveReason: requestData.reason || "",
         startDate: requestData.start_date || "",

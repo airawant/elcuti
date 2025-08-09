@@ -13,6 +13,7 @@ const userUpdateSchema = z.object({
   email: z.string().email("Please enter a valid email").optional(),
   phone: z.string().optional(),
   address: z.string().optional(),
+  masa_kerja: z.string().optional(),
   isapprover: z.boolean().optional(),
   isApprover: z.boolean().optional(),
   isauthorizedofficer: z.boolean().optional(),
@@ -52,138 +53,39 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     const isApproverValue = body.isApprover === true || body.isapprover === true;
     const isAuthorizedOfficerValue = body.isAuthorizedOfficer === true || body.isauthorizedofficer === true;
     const workUnitValue = body.workUnit || body.workunit || '';
+    const masaKerjaValue = body.masa_kerja || null;
 
     // Check if fields exist in the request
     const hasIsApprover = 'isApprover' in body || 'isapprover' in body;
     const hasIsAuthorizedOfficer = 'isAuthorizedOfficer' in body || 'isauthorizedofficer' in body;
     const hasWorkUnit = 'workUnit' in body || 'workunit' in body;
-
-    console.log("[UPDATE] Direct field extract:", {
-      workUnit_direct: workUnitValue,
-      has_workUnit: hasWorkUnit,
-      isApprover_direct: isApproverValue,
-      has_isApprover: hasIsApprover,
-      isAuthorizedOfficer_direct: isAuthorizedOfficerValue,
-      has_isAuthorizedOfficer: hasIsAuthorizedOfficer
-    });
+    const hasMasaKerja = 'masa_kerja' in body;
 
     // Validate input
-    const validationResult = userUpdateSchema.safeParse(body)
-    if (!validationResult.success) {
-      console.log("Validation error:", validationResult.error.flatten())
-      return NextResponse.json(
-        { error: "Validation error", details: validationResult.error.flatten() },
-        { status: 400 },
-      )
+    const validation = userUpdateSchema.safeParse(body)
+    if (!validation.success) {
+      console.log("[UPDATE] Validation error:", validation.error.flatten())
+      return NextResponse.json({ error: "Validation error", details: validation.error.flatten() }, { status: 400 })
     }
 
-    const userData = validationResult.data
+    const userData = validation.data
 
-    // Map frontend camelCase to backend fields
-    const workUnit = workUnitValue;
-    const isApprover = isApproverValue;
-    const isAuthorizedOfficer = isAuthorizedOfficerValue;
+    // Prepare update data with only provided fields
+    const updateData: any = {}
+    if (userData.name) updateData.name = userData.name
+    if (userData.role) updateData.role = userData.role
+    if (userData.position !== undefined) updateData.position = userData.position
+    if (hasWorkUnit) updateData.workunit = workUnitValue
+    if (userData.email !== undefined) updateData.email = userData.email
+    if (userData.phone !== undefined) updateData.phone = userData.phone
+    if (userData.address !== undefined) updateData.address = userData.address
+    if (hasMasaKerja) updateData.masa_kerja = masaKerjaValue
 
-    console.log("[UPDATE] Field mapping:", {
-      frontend_workUnit: body.workUnit,
-      backend_workunit: userData.workunit,
-      mapped_workUnit: workUnit,
+    if (hasIsApprover) updateData.isapprover = isApproverValue
+    if (hasIsAuthorizedOfficer) updateData.isauthorizedofficer = isAuthorizedOfficerValue
 
-      frontend_isApprover: body.isApprover,
-      backend_isapprover: userData.isapprover,
-      mapped_isApprover: isApprover,
-
-      frontend_isAuthorizedOfficer: body.isAuthorizedOfficer,
-      backend_isauthorizedofficer: userData.isauthorizedofficer,
-      mapped_isAuthorizedOfficer: isAuthorizedOfficer
-    });
-
-    // If updating email, check if it's already in use
-    if (userData.email) {
-      const { data: existingEmail, error: emailCheckError } = await supabase
-        .from("pegawai")
-        .select("id, email")
-        .eq("email", userData.email)
-        .neq("id", userId)
-        .single()
-
-      if (emailCheckError && emailCheckError.code !== "PGRST116") {
-        console.error("Email check error:", emailCheckError)
-        return NextResponse.json({ error: "Database error", details: emailCheckError.message }, { status: 500 })
-      }
-
-      if (existingEmail) {
-        return NextResponse.json({ error: "Email already in use by another user" }, { status: 409 })
-      }
-    }
-
-    // Update user in database
-    if (!supabaseAdmin) {
-      console.error("[UPDATE] Service role key not configured")
-      return NextResponse.json({
-        error: "Server configuration error",
-        details: "Admin operations not available"
-      }, { status: 500 })
-    }
-
-    // Prepare update data explicitly
-    const updateData: Record<string, any> = {};
-
-    // Add fields that exist in userData from validation
-    if (userData.name) updateData.name = userData.name;
-    if (userData.role) updateData.role = userData.role;
-    if (userData.position) updateData.position = userData.position;
-    if (userData.email) updateData.email = userData.email;
-    if (userData.phone) updateData.phone = userData.phone;
-    if (userData.address) updateData.address = userData.address;
-
-    // Handle special fields directly from the raw body
-    if (hasWorkUnit) {
-      updateData.workunit = workUnitValue;
-    }
-
-    if (hasIsApprover) {
-      updateData.isapprover = isApproverValue;
-    }
-
-    if (hasIsAuthorizedOfficer) {
-      updateData.isauthorizedofficer = isAuthorizedOfficerValue;
-    }
-
-    // Handle leave_balance field
-    const hasLeaveBalance = 'leave_balance' in body;
-    let leaveBalanceValue = userData.leave_balance;
-
-    // If no leave_balance provided in update or empty, create dynamic one
-    if (hasLeaveBalance && (!leaveBalanceValue || Object.keys(leaveBalanceValue).length === 0)) {
-      const currentYear = new Date().getFullYear();
-      const previousYear = currentYear - 1;
-
-      // Create dynamic leave_balance
-      leaveBalanceValue = {
-        [currentYear.toString()]: 12,     // Tahun saat ini (dinamis)
-        [previousYear.toString()]: 12     // Tahun sebelumnya (dinamis)
-      };
-
-      console.log("[UPDATE] Created dynamic leave_balance:", {
-        currentYear,
-        previousYear,
-        leave_balance: leaveBalanceValue
-      });
-    }
-
-    // Jika sisa cuti tahun lalu > 6, batasi menjadi 6 (aturan cuti)
-    if (leaveBalanceValue) {
-      const currentYear = new Date().getFullYear();
-      const previousYear = (currentYear - 1).toString();
-
-      if (leaveBalanceValue[previousYear] && leaveBalanceValue[previousYear] > 6) {
-        leaveBalanceValue[previousYear] = 6;
-        console.log(`[UPDATE] Capped previous year (${previousYear}) leave balance to 6 days`);
-      }
-    }
-
-    // Add leave_balance to updateData if it exists
+    // Handle leave_balance if provided
+    const leaveBalanceValue = userData.leave_balance
     if (leaveBalanceValue) {
       updateData.leave_balance = leaveBalanceValue;
     }
@@ -199,6 +101,11 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     })
 
     // Update user in database with final data
+    if (!supabaseAdmin) {
+      console.error("[UPDATE] Service role key not configured")
+      return NextResponse.json({ error: "Server configuration error", details: "Admin operations not available" }, { status: 500 })
+    }
+
     const { data, error } = await supabaseAdmin
       .from("pegawai")
       .update(updateData)
@@ -216,6 +123,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       ...data,
       password: '[REDACTED]',
       workunit: data.workunit,
+      masa_kerja: data.masa_kerja,
       isapprover: data.isapprover,
       isauthorizedofficer: data.isauthorizedofficer,
       leave_balance: data.leave_balance
@@ -232,6 +140,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       email: data.email,
       phone: data.phone,
       address: data.address,
+      masa_kerja: data.masa_kerja,
       isapprover: data.isapprover,
       isauthorizedofficer: data.isauthorizedofficer,
       leave_balance: data.leave_balance

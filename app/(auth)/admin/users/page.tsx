@@ -52,6 +52,7 @@ const userFormSchema = z.object({
   address: z.string().min(1, {
     message: "Address is required",
   }),
+  masa_kerja: z.string().optional(),
   isapprover: z.boolean().default(false),
   isauthorizedofficer: z.boolean().default(false),
   password: z.union([
@@ -86,34 +87,8 @@ export default function AdminUsersPage() {
     const targetUser = users.find(u => u.id === userId);
     if (!targetUser || !targetUser.leave_balance) return 0;
 
-    // Dapatkan saldo awal
-    const initialBalance = targetUser.leave_balance[year] || 0;
-
-    // Hitung cuti yang sudah digunakan berdasarkan kolom yang sesuai
-    const usedLeave = leaveRequests
-      .filter(req => {
-        // Pastikan hanya menghitung cuti yang disetujui
-        if (req.status !== "Approved") return false;
-
-        // Pastikan hanya menghitung cuti tahunan
-        if (req.type !== "Cuti Tahunan") return false;
-
-        // Pastikan user yang sesuai
-        if (req.user_id !== userId) return false;
-
-        return true;
-      })
-      .reduce((total, req) => {
-        // Gunakan kolom yang sesuai berdasarkan tahun
-        if (year === previousYear) {
-          return total + (req.used_carry_over_days || 0);
-        } else {
-          return total + (req.used_current_year_days || 0);
-        }
-      }, 0);
-
-    // Hitung sisa saldo (tidak boleh negatif)
-    return Math.max(0, initialBalance - usedLeave);
+    // Sisa saldo sekarang langsung dari leave_balance
+    return Math.max(0, targetUser.leave_balance[year] || 0);
   };
 
   const addForm = useForm<z.infer<typeof userFormSchema>>({
@@ -127,6 +102,7 @@ export default function AdminUsersPage() {
       email: "",
       phone: "",
       address: "",
+      masa_kerja: "",
       isapprover: false,
       isauthorizedofficer: false,
       password: "",
@@ -149,6 +125,7 @@ export default function AdminUsersPage() {
       email: "",
       phone: "",
       address: "",
+      masa_kerja: "",
       isapprover: false,
       isauthorizedofficer: false,
       password: "",
@@ -189,6 +166,7 @@ export default function AdminUsersPage() {
           email: userToEdit.email || "",
           phone: userToEdit.phone || "",
           address: userToEdit.address || "",
+          masa_kerja: (userToEdit as any).masa_kerja || "",
           isapprover: userToEdit.isapprover || false,
           isauthorizedofficer: userToEdit.isauthorizedofficer || false,
           password: "", // Password is optional for edit
@@ -210,7 +188,8 @@ export default function AdminUsersPage() {
       ...values,
       workunit: values.workunit,
       isapprover: values.isapprover,
-      isauthorizedofficer: values.isauthorizedofficer
+      isauthorizedofficer: values.isauthorizedofficer,
+      masa_kerja: values.masa_kerja || null,
     }
 
     console.log("Transformed values for API:", apiValues)
@@ -240,7 +219,8 @@ export default function AdminUsersPage() {
         ...updateValues,
         workunit: updateValues.workunit,
         isapprover: updateValues.isapprover,
-        isauthorizedofficer: updateValues.isauthorizedofficer
+        isauthorizedofficer: updateValues.isauthorizedofficer,
+        masa_kerja: updateValues.masa_kerja || null,
       }
 
       console.log("Transformed values for API:", apiValues)
@@ -287,9 +267,8 @@ export default function AdminUsersPage() {
       "Email",
       "Telepon",
       "Alamat",
-      `Saldo Awal ${previousYear}`,
+      `Sisa Saldo ${twoYearsAgo}`,
       `Sisa Saldo ${previousYear}`,
-      `Saldo Awal ${currentYear}`,
       `Sisa Saldo ${currentYear}`,
       "Penyetuju",
       "Pejabat Berwenang"
@@ -297,14 +276,10 @@ export default function AdminUsersPage() {
 
     // Format data pengguna untuk CSV
     const csvData = users.map(user => {
-      // Hitung sisa saldo cuti untuk tahun sebelumnya dan tahun berjalan
-      const twoYearsAgoRemainingBalance = calculateRemainingLeaveBalance(user.id, twoYearsAgo);
-      const previousYearRemainingBalance = calculateRemainingLeaveBalance(user.id, previousYear);
-      const currentYearRemainingBalance = calculateRemainingLeaveBalance(user.id, currentYear);
-
-      const initialTwoYearsAgoBalance = user.leave_balance ? (user.leave_balance[twoYearsAgo] || 0) : 0;
-      const initialPreviousYearBalance = user.leave_balance ? (user.leave_balance[previousYear] || 0) : 0;
-      const initialCurrentYearBalance = user.leave_balance ? (user.leave_balance[currentYear] || 0) : 0;
+      // Ambil sisa saldo langsung dari leave_balance
+      const twoYearsAgoRemainingBalance = user.leave_balance ? (user.leave_balance[twoYearsAgo] || 0) : 0;
+      const previousYearRemainingBalance = user.leave_balance ? (user.leave_balance[previousYear] || 0) : 0;
+      const currentYearRemainingBalance = user.leave_balance ? (user.leave_balance[currentYear] || 0) : 0;
 
       return [
         user.name || "",
@@ -315,11 +290,8 @@ export default function AdminUsersPage() {
         user.email || "",
         user.phone || "",
         user.address || "",
-        initialTwoYearsAgoBalance,
         twoYearsAgoRemainingBalance,
-        initialPreviousYearBalance,
         previousYearRemainingBalance,
-        initialCurrentYearBalance,
         currentYearRemainingBalance,
         user.isapprover ? "Ya" : "Tidak",
         user.isauthorizedofficer ? "Ya" : "Tidak"
@@ -502,6 +474,22 @@ export default function AdminUsersPage() {
                               <FormLabel>Password</FormLabel>
                               <FormControl>
                                 <Input type="password" placeholder="Masukkan password" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={addForm.control}
+                          name="masa_kerja"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Masa Kerja</FormLabel>
+                              <FormControl>
+                                <Input type="date" placeholder="Pilih tanggal mulai kerja" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -695,20 +683,10 @@ export default function AdminUsersPage() {
                   </TableHeader>
                   <TableBody>
                     {users.map((user) => {
-                      // Hitung sisa saldo cuti untuk tahun sebelumnya dan tahun berjalan
-                      const twoYearsAgoRemainingBalance = calculateRemainingLeaveBalance(user.id, twoYearsAgo);
-                      const previousYearRemainingBalance = calculateRemainingLeaveBalance(user.id, previousYear);
-                      const currentYearRemainingBalance = calculateRemainingLeaveBalance(user.id, currentYear);
-
-                      // Dapatkan saldo awal untuk perbandingan
-                      const initialTwoYearsAgoBalance = user.leave_balance ? (user.leave_balance[twoYearsAgo] || 0) : 0;
-                      const initialPreviousYearBalance = user.leave_balance ? (user.leave_balance[previousYear] || 0) : 0;
-                      const initialCurrentYearBalance = user.leave_balance ? (user.leave_balance[currentYear] || 0) : 0;
-
-                      // Tentukan apakah saldo berubah
-                      const isTwoYearsAgoBalanceChanged = twoYearsAgoRemainingBalance !== initialTwoYearsAgoBalance;
-                      const isPreviousYearBalanceChanged = previousYearRemainingBalance !== initialPreviousYearBalance;
-                      const isCurrentYearBalanceChanged = currentYearRemainingBalance !== initialCurrentYearBalance;
+                      // Ambil sisa saldo cuti langsung dari leave_balance
+                      const twoYearsAgoRemainingBalance = user.leave_balance ? (user.leave_balance[twoYearsAgo] || 0) : 0;
+                      const previousYearRemainingBalance = user.leave_balance ? (user.leave_balance[previousYear] || 0) : 0;
+                      const currentYearRemainingBalance = user.leave_balance ? (user.leave_balance[currentYear] || 0) : 0;
 
                       return (
                         <TableRow key={user.id}>
@@ -720,31 +698,16 @@ export default function AdminUsersPage() {
                           <TableCell className="text-center">
                             <div className="flex flex-col items-center">
                               <span className="font-medium">{twoYearsAgoRemainingBalance} hari</span>
-                              {isTwoYearsAgoBalanceChanged && (
-                                <span className="text-xs text-blue-600">
-                                  (Awal: {initialTwoYearsAgoBalance})
-                                </span>
-                              )}
                             </div>
                           </TableCell>
                           <TableCell className="text-center">
                             <div className="flex flex-col items-center">
                               <span className="font-medium">{previousYearRemainingBalance} hari</span>
-                              {isPreviousYearBalanceChanged && (
-                                <span className="text-xs text-blue-600">
-                                  (Awal: {initialPreviousYearBalance})
-                                </span>
-                              )}
                             </div>
                           </TableCell>
                           <TableCell className="text-center">
                             <div className="flex flex-col items-center">
                               <span className="font-medium">{currentYearRemainingBalance} hari</span>
-                              {isCurrentYearBalanceChanged && (
-                                <span className="text-xs text-blue-600">
-                                  (Awal: {initialCurrentYearBalance})
-                                </span>
-                              )}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -906,6 +869,22 @@ export default function AdminUsersPage() {
                         <FormLabel>Password (kosongkan untuk tidak mengubah)</FormLabel>
                         <FormControl>
                           <Input type="password" placeholder="Masukkan password" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={editForm.control}
+                    name="masa_kerja"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Masa Kerja</FormLabel>
+                        <FormControl>
+                          <Input type="date" placeholder="Pilih tanggal mulai kerja" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

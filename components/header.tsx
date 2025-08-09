@@ -3,8 +3,9 @@
 import type React from "react"
 
 import { Button } from "@/components/ui/button"
-import { Menu } from "lucide-react"
+import { Menu, User } from "lucide-react"
 import Image from "next/image"
+import { useAuth } from "@/lib/auth-context"
 
 interface HeaderProps {
   title: string
@@ -13,6 +14,8 @@ interface HeaderProps {
 }
 
 export function Header({ title, onMenuClick, children }: HeaderProps) {
+  const { user } = useAuth()
+
   return (
     <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-white px-4 md:px-6">
       <div className="flex items-center">
@@ -35,7 +38,22 @@ export function Header({ title, onMenuClick, children }: HeaderProps) {
 
         <h1 className="text-xl font-semibold text-primary">{title}</h1>
       </div>
-      {children}
+
+      {/* User info di pojok kanan atas */}
+      <div className="flex items-center space-x-4">
+        {user && (
+          <div className="flex items-center">
+            <div className="hidden md:block text-right mr-2">
+              <p className="text-sm font-medium">{user.name}</p>
+              <p className="text-xs text-muted-foreground">{user.nip}</p>
+            </div>
+            <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 text-primary">
+              <User className="h-4 w-4" />
+            </div>
+          </div>
+        )}
+        {children}
+      </div>
     </header>
   )
 }
