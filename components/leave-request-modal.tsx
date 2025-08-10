@@ -653,33 +653,6 @@ export function LeaveRequestModal({
   const handleLeaveUsageChange = (field: 'usedTwoYearsAgo' | 'usedPrevYear' | 'usedCurrentYear', value: number) => {
     setFormData((prev) => {
       const newData = { ...prev, [field]: value };
-
-      // Auto-fill berdasarkan pilihan saldo
-      if (prev.selectedLeaveBalance && value > 0) {
-        const workingDays = prev.workingdays || 0;
-
-        switch (prev.selectedLeaveBalance) {
-          case "twoYearsAgo":
-            if (field === 'usedTwoYearsAgo') {
-              newData.usedPrevYear = 0;
-              newData.usedCurrentYear = 0;
-            }
-            break;
-          case "carryOver":
-            if (field === 'usedPrevYear') {
-              newData.usedTwoYearsAgo = 0;
-              newData.usedCurrentYear = 0;
-            }
-            break;
-          case "current":
-            if (field === 'usedCurrentYear') {
-              newData.usedTwoYearsAgo = 0;
-              newData.usedPrevYear = 0;
-            }
-            break;
-        }
-      }
-
       return newData;
     });
   };

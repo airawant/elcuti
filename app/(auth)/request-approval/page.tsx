@@ -125,9 +125,28 @@ export default function RequestApprovalPage() {
       }
 
       // Refresh data after successful approval
+      await refreshLeaveRequests();
+      setIsModalOpen(false);
+      
+      // Tampilkan notifikasi berhasil
+      toast({
+        title: "Berhasil",
+        description: `Permohonan cuti telah ${approvalData.action === "Approved" ? "disetujui" : "ditolak"} dengan sukses`,
+        variant: "default",
+      });
+      
+      // Refresh halaman untuk memastikan data terupdate
       router.refresh();
     } catch (error) {
       console.error("Error in approval submission:", error);
+      
+      // Tampilkan notifikasi error
+      toast({
+        title: "Gagal",
+        description: error instanceof Error ? error.message : "Gagal memproses persetujuan",
+        variant: "destructive",
+      });
+      
       throw error;
     }
   };

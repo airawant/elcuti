@@ -52,25 +52,43 @@ export function SubordinateLeaveRequests() {
   const totalPages = Math.ceil(filteredRequests.length / itemsPerPage)
   const paginatedRequests = filteredRequests.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
-  const handleApprove = () => {
+  const handleApprove = async () => {
     if (selectedRequest) {
-      updateLeaveRequest(selectedRequest, "Approved")
-      toast({
-        title: "Permintaan disetujui",
-        description: "Permintaan cuti telah disetujui",
-      })
-      setIsDialogOpen(false)
+      try {
+        await updateLeaveRequest(selectedRequest, "Approved")
+        toast({
+          title: "Berhasil",
+          description: "Permintaan cuti telah disetujui",
+          variant: "default",
+        })
+        setIsDialogOpen(false)
+      } catch (error) {
+        toast({
+          title: "Gagal",
+          description: error instanceof Error ? error.message : "Gagal menyetujui permintaan cuti",
+          variant: "destructive",
+        })
+      }
     }
   }
 
-  const handleReject = () => {
+  const handleReject = async () => {
     if (selectedRequest) {
-      updateLeaveRequest(selectedRequest, "Rejected")
-      toast({
-        title: "Permintaan ditolak",
-        description: "Permintaan cuti telah ditolak",
-      })
-      setIsDialogOpen(false)
+      try {
+        await updateLeaveRequest(selectedRequest, "Rejected")
+        toast({
+          title: "Berhasil",
+          description: "Permintaan cuti telah ditolak",
+          variant: "default",
+        })
+        setIsDialogOpen(false)
+      } catch (error) {
+        toast({
+          title: "Gagal",
+          description: error instanceof Error ? error.message : "Gagal menolak permintaan cuti",
+          variant: "destructive",
+        })
+      }
     }
   }
 

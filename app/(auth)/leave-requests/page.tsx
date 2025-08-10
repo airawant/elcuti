@@ -31,42 +31,57 @@ export default function LeaveRequestPage() {
     return null
   }
 
-  const handleLeaveSubmission = (formData: any) => {
-    // Extract the necessary fields for the leave request
-    const leaveRequest = {
-      user_id: user.id,
-      type: formData.type || formData.leaveType,
-      status: "Pending",
-      start_date: formData.start_date || formData.startDate,
-      end_date: formData.end_date || formData.endDate,
-      reason: formData.reason || formData.leaveReason,
-      supervisor_id: formData.supervisor_id || formData.supervisorId,
-      authorized_officer_id: formData.authorized_officer_id || formData.authorizedOfficerId,
-      workingdays: formData.workingDays,
-      address: formData.address,
-      phone: formData.phone,
-      supervisor_viewed: false,
-      authorized_officer_viewed: false,
-      supervisor_signed: false,
-      authorized_officer_signed: false,
-      link_file: null,
-      supervisor_note: null,
-      authorized_officer_note: null,
-      used_carry_over_days: 0,
-      used_current_year_days: 0,
-      leave_year: new Date().getFullYear()
-    }
-    // Add the leave request
-    addLeaveRequest({
-      ...leaveRequest,
-      status: "Pending" // Use the correct ApprovalStatus enum value
-    })
+  const handleLeaveSubmission = async (formData: any) => {
+    try {
+      // Extract the necessary fields for the leave request
+      const leaveRequest = {
+        user_id: user.id,
+        type: formData.type || formData.leaveType,
+        status: "Pending",
+        start_date: formData.start_date || formData.startDate,
+        end_date: formData.end_date || formData.endDate,
+        reason: formData.reason || formData.leaveReason,
+        supervisor_id: formData.supervisor_id || formData.supervisorId,
+        authorized_officer_id: formData.authorized_officer_id || formData.authorizedOfficerId,
+        workingdays: formData.workingDays,
+        address: formData.address,
+        phone: formData.phone,
+        supervisor_viewed: false,
+        authorized_officer_viewed: false,
+        supervisor_signed: false,
+        authorized_officer_signed: false,
+        link_file: null,
+        supervisor_note: null,
+        authorized_officer_note: null,
+        used_carry_over_days: 0,
+        used_current_year_days: 0,
+        leave_year: new Date().getFullYear()
+      }
+      
+      // Add the leave request
+      await addLeaveRequest({
+        ...leaveRequest,
+        status: "Pending" // Use the correct ApprovalStatus enum value
+      })
 
-    setIsModalOpen(false)
-    toast({
-      title: "Permintaan cuti berhasil diajukan",
-      description: "Permintaan cuti Anda telah berhasil diajukan dan menunggu persetujuan.",
-    })
+      // Tutup modal dan tampilkan notifikasi
+      setIsModalOpen(false)
+      toast({
+        title: "Berhasil",
+        description: "Permintaan cuti Anda telah berhasil diajukan dan menunggu persetujuan.",
+        variant: "default",
+      })
+      
+      // Refresh halaman untuk memastikan data terupdate
+      router.refresh()
+    } catch (error) {
+      // Tampilkan notifikasi error
+      toast({
+        title: "Gagal",
+        description: error instanceof Error ? error.message : "Gagal mengajukan permintaan cuti",
+        variant: "destructive",
+      })
+    }
   }
 
   return (

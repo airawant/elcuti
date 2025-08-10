@@ -1,8 +1,8 @@
-import { type NextRequest, NextResponse } from "next/server"
-import { supabase, supabaseAdmin } from "@/lib/supabase"
-import { getAuthCookie, verifyJWT } from "@/lib/auth-utils"
-import { generateLeaveRequestId } from "@/lib/leave-utils"
-import { z } from "zod"
+import { type NextRequest, NextResponse } from "next/server";
+import { supabase, supabaseAdmin } from "@/lib/supabase";
+import { getAuthCookie, verifyJWT } from "@/lib/auth-utils";
+import { generateLeaveRequestId } from "@/lib/leave-utils";
+import { z } from "zod";
 
 // Define validation schema for leave requests
 const leaveRequestSchema = z.object({
@@ -29,32 +29,30 @@ const leaveRequestSchema = z.object({
   used_carry_over_days: z.number().optional(),
   used_current_year_days: z.number().optional(),
   used_n2_year: z.number().optional(),
-})
+});
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.cookies.get("auth_token")?.value
+    const token = request.cookies.get("auth_token")?.value;
 
     if (!token) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const payload = await verifyJWT(token)
+    const payload = await verifyJWT(token);
 
     if (!payload || !payload.id) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 })
+      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
     }
 
     if (!supabaseAdmin) {
-      throw new Error("Supabase admin client not initialized")
+      throw new Error("Supabase admin client not initialized");
     }
 
-    console.log("User payload:", payload)
+    console.log("User payload:", payload);
 
     // Fetch leave requests based on user role
-    let query = supabaseAdmin
-      .from("leave_requests")
-      .select(`
+    let query = supabaseAdmin.from("leave_requests").select(`
         *,
         requester:user_id (
           id,
@@ -72,7 +70,7 @@ export async function GET(request: NextRequest) {
           name,
           position
         )
-      `)
+      `);
 
     // If user is not admin, show:
     // 1. Their own requests
@@ -81,203 +79,224 @@ export async function GET(request: NextRequest) {
     if (payload.role !== "admin") {
       query = query.or(
         `user_id.eq.${payload.id},` +
-        `supervisor_id.eq.${payload.id},` +
-        `authorized_officer_id.eq.${payload.id}`
-      )
+          `supervisor_id.eq.${payload.id},` +
+          `authorized_officer_id.eq.${payload.id}`
+      );
     }
 
     // Add order by to show newest first and pending requests first
-    query = query.order("status", { ascending: false })
-               .order("created_at", { ascending: false })
+    query = query
+      .order("status", { ascending: false })
+      .order("created_at", { ascending: false });
 
-    const { data, error } = await query
+    const { data, error } = await query;
 
     if (error) {
-      console.error("Error fetching leave requests:", error)
-      return NextResponse.json({
-        error: "Failed to fetch leave requests",
-        details: error.message,
-        code: error.code
-      }, { status: 500 })
+      console.error("Error fetching leave requests:", error);
+      return NextResponse.json(
+        {
+          error: "Failed to fetch leave requests",
+          details: error.message,
+          code: error.code,
+        },
+        { status: 500 }
+      );
     }
 
     if (!data) {
-      console.log("No leave requests found")
-      return NextResponse.json([], { status: 200 })
+      console.log("No leave requests found");
+      return NextResponse.json([], { status: 200 });
     }
 
-    console.log("Successfully fetched leave requests:", data.length, "records")
-    console.log("Sample leave request:", data[0])
+    console.log("Successfully fetched leave requests:", data.length, "records");
+    console.log("Sample leave request:", data[0]);
 
-    return NextResponse.json(data, { status: 200 })
+    return NextResponse.json(data, { status: 200 });
   } catch (error) {
-    console.error("Fetch leave requests error:", error)
-    return NextResponse.json({
-      error: "Internal server error",
-      details: error instanceof Error ? error.message : "Unknown error"
-    }, { status: 500 })
+    console.error("Fetch leave requests error:", error);
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    );
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     // Get and verify JWT token
-    const token = request.cookies.get("auth_token")?.value
+    const token = request.cookies.get("auth_token")?.value;
     if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const payload = await verifyJWT(token)
+    const payload = await verifyJWT(token);
     if (!payload) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 })
+      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
     }
 
     // Parse and validate request body
-    const body = await request.json()
-    console.log("Request body:", body)
+    const body = await request.json();
+    console.log("Request body:", body);
 
-    const leaveRequestData = leaveRequestSchema.parse(body)
-    console.log("Validated leave request data:", leaveRequestData)
+    const leaveRequestData = leaveRequestSchema.parse(body);
+    console.log("Validated leave request data:", leaveRequestData);
 
     if (!supabaseAdmin) {
-      throw new Error("Supabase admin client not initialized")
+      throw new Error("Supabase admin client not initialized");
     }
 
     // Generate unique ID for leave request
-    const leaveRequestId = generateLeaveRequestId(leaveRequestData.user_id)
+    const leaveRequestId = generateLeaveRequestId(leaveRequestData.user_id);
 
     // Hitung hari kerja jika tidak disediakan
     if (!leaveRequestData.workingdays) {
-      const startDate = new Date(leaveRequestData.start_date)
-      const endDate = new Date(leaveRequestData.end_date)
-      let workingDays = 0
-      const currentDate = new Date(startDate)
+      const startDate = new Date(leaveRequestData.start_date);
+      const endDate = new Date(leaveRequestData.end_date);
+      let workingDays = 0;
+      const currentDate = new Date(startDate);
 
       // Ambil data hari libur
       const { data: holidays } = await supabaseAdmin
-        .from('holidays')
-        .select('date')
-        .gte('date', startDate.toISOString().split('T')[0])
-        .lte('date', endDate.toISOString().split('T')[0])
+        .from("holidays")
+        .select("date")
+        .gte("date", startDate.toISOString().split("T")[0])
+        .lte("date", endDate.toISOString().split("T")[0]);
 
-      const holidayDates = new Set(holidays?.map(h => h.date) || [])
+      const holidayDates = new Set(holidays?.map((h) => h.date) || []);
 
       while (currentDate <= endDate) {
         // Skip hari Sabtu (6) dan Minggu (0)
         if (currentDate.getDay() !== 0 && currentDate.getDay() !== 6) {
           // Skip hari libur nasional
-          const dateString = currentDate.toISOString().split('T')[0]
+          const dateString = currentDate.toISOString().split("T")[0];
           if (!holidayDates.has(dateString)) {
-            workingDays++
+            workingDays++;
           }
         }
-        currentDate.setDate(currentDate.getDate() + 1)
+        currentDate.setDate(currentDate.getDate() + 1);
       }
 
-      leaveRequestData.workingdays = workingDays
-      console.log("Calculated working days:", workingDays)
+      leaveRequestData.workingdays = workingDays;
+      console.log("Calculated working days:", workingDays);
     }
 
     // Ambil data user untuk mendapatkan saldo cuti
     const { data: userData, error: userError } = await supabaseAdmin
-      .from('pegawai')
-      .select('leave_balance')
-      .eq('id', leaveRequestData.user_id)
-      .single()
+      .from("pegawai")
+      .select("leave_balance")
+      .eq("id", leaveRequestData.user_id)
+      .single();
 
     if (userError || !userData) {
-      console.error("Error fetching user data:", userError)
-      return NextResponse.json({
-        error: "Failed to fetch user data",
-        details: userError?.message || "User not found"
-      }, { status: 500 })
+      console.error("Error fetching user data:", userError);
+      return NextResponse.json(
+        {
+          error: "Failed to fetch user data",
+          details: userError?.message || "User not found",
+        },
+        { status: 500 }
+      );
     }
 
     // Ambil saldo cuti
-    const leaveBalance = userData.leave_balance || {}
-    console.log("User leave balance:", leaveBalance)
+    const leaveBalance = userData.leave_balance || {};
+    console.log("User leave balance:", leaveBalance);
 
-    const currentYear = new Date().getFullYear()
-    const previousYear = currentYear - 1
-    const twoYearsAgo = currentYear - 2
+    const currentYear = new Date().getFullYear();
+    const previousYear = currentYear - 1;
+    const twoYearsAgo = currentYear - 2;
 
     // Ambil saldo dari leave_balance pegawai
-    const currentYearBalance = leaveBalance[currentYear.toString()] || 12
-    const carryOverBalance = Math.min(6, leaveBalance[previousYear.toString()] || 0)
-    const twoYearsAgoBalance = Math.min(6, leaveBalance[twoYearsAgo.toString()] || 0)
-    console.log("Current year balance:", currentYearBalance)
-    console.log("Carry over balance:", carryOverBalance)
-    console.log("Two years ago balance:", twoYearsAgoBalance)
+    const currentYearBalance = leaveBalance[currentYear.toString()] || 12;
+    const carryOverBalance = Math.min(6, leaveBalance[previousYear.toString()] || 0);
+    const twoYearsAgoBalance = Math.min(6, leaveBalance[twoYearsAgo.toString()] || 0);
+    console.log("Current year balance:", currentYearBalance);
+    console.log("Carry over balance:", carryOverBalance);
+    console.log("Two years ago balance:", twoYearsAgoBalance);
 
     // Ambil penggunaan cuti yang sudah ada
     const { data: existingLeaves, error: leavesError } = await supabaseAdmin
-      .from('leave_requests')
-      .select('workingdays, start_date, used_carry_over_days, used_current_year_days, used_n2_year')
-      .eq('user_id', leaveRequestData.user_id)
-      .eq('status', 'Approved')
-      .eq('type', 'Cuti Tahunan')
+      .from("leave_requests")
+      .select(
+        "workingdays, start_date, used_carry_over_days, used_current_year_days, used_n2_year"
+      )
+      .eq("user_id", leaveRequestData.user_id)
+      .eq("status", "Approved")
+      .eq("type", "Cuti Tahunan");
 
     if (leavesError) {
-      console.error("Error fetching existing leaves:", leavesError)
-      return NextResponse.json({
-        error: "Failed to fetch existing leaves",
-        details: leavesError.message
-      }, { status: 500 })
+      console.error("Error fetching existing leaves:", leavesError);
+      return NextResponse.json(
+        {
+          error: "Failed to fetch existing leaves",
+          details: leavesError.message,
+        },
+        { status: 500 }
+      );
     }
 
     // Hitung penggunaan untuk permintaan baru
-    const workingDays = leaveRequestData.workingdays || 0
+    const workingDays = leaveRequestData.workingdays || 0;
 
     // Gunakan data yang dikirim dari frontend
-    let usedTwoYearsAgo = leaveRequestData.used_n2_year || 0
-    let usedCarryOver = leaveRequestData.used_carry_over_days || 0
-    let usedCurrentYear = leaveRequestData.used_current_year_days || 0
+    let usedTwoYearsAgo = leaveRequestData.used_n2_year || 0;
+    let usedCarryOver = leaveRequestData.used_carry_over_days || 0;
+    let usedCurrentYear = leaveRequestData.used_current_year_days || 0;
 
     // Validasi bahwa data dari frontend sudah benar
-    const totalUsedFromFrontend = usedTwoYearsAgo + usedCarryOver + usedCurrentYear
+    const totalUsedFromFrontend = usedTwoYearsAgo + usedCarryOver + usedCurrentYear;
 
     // Jika data dari frontend tidak lengkap atau tidak sesuai, hitung ulang
-    if (totalUsedFromFrontend !== workingDays || (usedTwoYearsAgo === 0 && usedCarryOver === 0 && usedCurrentYear === 0)) {
-      console.log("Data dari frontend tidak lengkap, menghitung ulang...")
+    if (
+      totalUsedFromFrontend !== workingDays ||
+      (usedTwoYearsAgo === 0 && usedCarryOver === 0 && usedCurrentYear === 0)
+    ) {
+      console.log("Data dari frontend tidak lengkap, menghitung ulang...");
 
       // Ambil penggunaan cuti yang sudah ada untuk tahun ini
-      const existingUsage = existingLeaves?.reduce((acc, leave) => {
-        const leaveYear = new Date(leave.start_date).getFullYear()
-        if (leaveYear === currentYear) {
-          acc.carryOver += leave.used_carry_over_days || 0
-          acc.currentYear += leave.used_current_year_days || 0
-          acc.twoYearsAgo += leave.used_n2_year || 0
-        }
-        return acc
-      }, { carryOver: 0, currentYear: 0, twoYearsAgo: 0 }) || { carryOver: 0, currentYear: 0, twoYearsAgo: 0 }
+      const existingUsage = existingLeaves?.reduce(
+        (acc, leave) => {
+          const leaveYear = new Date(leave.start_date).getFullYear();
+          if (leaveYear === currentYear) {
+            acc.carryOver += leave.used_carry_over_days || 0;
+            acc.currentYear += leave.used_current_year_days || 0;
+            acc.twoYearsAgo += leave.used_n2_year || 0;
+          }
+          return acc;
+        },
+        { carryOver: 0, currentYear: 0, twoYearsAgo: 0 }
+      ) || { carryOver: 0, currentYear: 0, twoYearsAgo: 0 };
 
-      console.log("Existing usage:", existingUsage)
+      console.log("Existing usage:", existingUsage);
 
       // Hitung saldo yang tersisa
-      const remainingTwoYearsAgo = Math.max(0, twoYearsAgoBalance - existingUsage.twoYearsAgo)
-      const remainingCarryOver = Math.max(0, carryOverBalance - existingUsage.carryOver)
-      const remainingCurrentYear = Math.max(0, currentYearBalance - existingUsage.currentYear)
+      const remainingTwoYearsAgo = Math.max(0, twoYearsAgoBalance - existingUsage.twoYearsAgo);
+      const remainingCarryOver = Math.max(0, carryOverBalance - existingUsage.carryOver);
+      const remainingCurrentYear = Math.max(0, currentYearBalance - existingUsage.currentYear);
 
       // Reset nilai penggunaan
-      usedTwoYearsAgo = 0
-      usedCarryOver = 0
-      usedCurrentYear = 0
+      usedTwoYearsAgo = 0;
+      usedCarryOver = 0;
+      usedCurrentYear = 0;
 
       // Gunakan saldo 2 tahun lalu terlebih dahulu (jika ada)
       if (remainingTwoYearsAgo > 0) {
-        usedTwoYearsAgo = Math.min(remainingTwoYearsAgo, workingDays)
+        usedTwoYearsAgo = Math.min(remainingTwoYearsAgo, workingDays);
       }
 
       // Kemudian gunakan saldo tahun lalu (jika ada)
       if (remainingCarryOver > 0 && usedTwoYearsAgo < workingDays) {
-        const remainingDays = workingDays - usedTwoYearsAgo
-        usedCarryOver = Math.min(remainingCarryOver, remainingDays)
+        const remainingDays = workingDays - usedTwoYearsAgo;
+        usedCarryOver = Math.min(remainingCarryOver, remainingDays);
       }
 
       // Terakhir gunakan saldo tahun ini
-      const totalUsed = usedTwoYearsAgo + usedCarryOver
+      const totalUsed = usedTwoYearsAgo + usedCarryOver;
       if (totalUsed < workingDays) {
-        usedCurrentYear = workingDays - totalUsed
+        usedCurrentYear = workingDays - totalUsed;
       }
     }
 
@@ -296,62 +315,80 @@ export async function POST(request: NextRequest) {
       dataFromFrontend: {
         used_n2_year: leaveRequestData.used_n2_year,
         used_carry_over_days: leaveRequestData.used_carry_over_days,
-        used_current_year_days: leaveRequestData.used_current_year_days
-      }
-    })
+        used_current_year_days: leaveRequestData.used_current_year_days,
+      },
+    });
 
     // Validasi saldo cuti
-    const totalSaldo = twoYearsAgoBalance + carryOverBalance + currentYearBalance
-    const totalUsed = usedTwoYearsAgo + usedCarryOver + usedCurrentYear
+    const totalSaldo = twoYearsAgoBalance + carryOverBalance + currentYearBalance;
+    const totalUsed = usedTwoYearsAgo + usedCarryOver + usedCurrentYear;
 
     if (totalUsed > totalSaldo) {
-      return NextResponse.json({
-        error: "Insufficient leave balance",
-        details: `Saldo cuti tidak mencukupi. Total saldo: ${totalSaldo} hari, permintaan: ${workingDays} hari`
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          error: "Insufficient leave balance",
+          details: `Saldo cuti tidak mencukupi. Total saldo: ${totalSaldo} hari, permintaan: ${workingDays} hari`,
+        },
+        { status: 400 }
+      );
     }
 
     // Validasi bahwa total penggunaan sama dengan workingDays
     if (totalUsed !== workingDays) {
-      return NextResponse.json({
-        error: "Invalid leave usage",
-        details: `Total penggunaan saldo (${totalUsed} hari) tidak sama dengan hari kerja (${workingDays} hari)`
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          error: "Invalid leave usage",
+          details: `Total penggunaan saldo (${totalUsed} hari) tidak sama dengan hari kerja (${workingDays} hari)`,
+        },
+        { status: 400 }
+      );
     }
 
     // Potong saldo cuti di tabel pegawai
-    const updatedLeaveBalance = { ...leaveBalance }
+    const updatedLeaveBalance = { ...leaveBalance };
 
     // Potong saldo 2 tahun lalu jika digunakan
     if (usedTwoYearsAgo > 0) {
-      const twoYearsAgoStr = twoYearsAgo.toString()
-      updatedLeaveBalance[twoYearsAgoStr] = Math.max(0, (updatedLeaveBalance[twoYearsAgoStr] || 0) - usedTwoYearsAgo)
+      const twoYearsAgoStr = twoYearsAgo.toString();
+      updatedLeaveBalance[twoYearsAgoStr] = Math.max(
+        0,
+        (updatedLeaveBalance[twoYearsAgoStr] || 0) - usedTwoYearsAgo
+      );
     }
 
     // Potong saldo carry over jika digunakan
     if (usedCarryOver > 0) {
-      const prevYearStr = previousYear.toString()
-      updatedLeaveBalance[prevYearStr] = Math.max(0, (updatedLeaveBalance[prevYearStr] || 0) - usedCarryOver)
+      const prevYearStr = previousYear.toString();
+      updatedLeaveBalance[prevYearStr] = Math.max(
+        0,
+        (updatedLeaveBalance[prevYearStr] || 0) - usedCarryOver
+      );
     }
 
     // Potong saldo tahun berjalan
     if (usedCurrentYear > 0) {
-      const currentYearStr = currentYear.toString()
-      updatedLeaveBalance[currentYearStr] = Math.max(0, (updatedLeaveBalance[currentYearStr] || 12) - usedCurrentYear)
+      const currentYearStr = currentYear.toString();
+      updatedLeaveBalance[currentYearStr] = Math.max(
+        0,
+        (updatedLeaveBalance[currentYearStr] || 12) - usedCurrentYear
+      );
     }
 
     // Update saldo di tabel pegawai
     const { error: updateBalanceError } = await supabaseAdmin
-      .from('pegawai')
+      .from("pegawai")
       .update({ leave_balance: updatedLeaveBalance })
-      .eq('id', leaveRequestData.user_id)
+      .eq("id", leaveRequestData.user_id);
 
     if (updateBalanceError) {
-      console.error("Error updating leave balance:", updateBalanceError)
-      return NextResponse.json({
-        error: "Failed to update leave balance",
-        details: updateBalanceError.message
-      }, { status: 500 })
+      console.error("Error updating leave balance:", updateBalanceError);
+      return NextResponse.json(
+        {
+          error: "Failed to update leave balance",
+          details: updateBalanceError.message,
+        },
+        { status: 500 }
+      );
     }
 
     // Insert leave request into database using admin client
@@ -365,8 +402,8 @@ export async function POST(request: NextRequest) {
       used_carry_over_days: usedCarryOver,
       used_current_year_days: usedCurrentYear,
       used_n2_year: usedTwoYearsAgo,
-      leave_year: currentYear
-    }
+      leave_year: currentYear,
+    };
 
     console.log("Data yang akan disimpan ke database:", {
       id: insertData.id,
@@ -378,49 +415,61 @@ export async function POST(request: NextRequest) {
       saldo_n2_year: insertData.saldo_n2_year,
       saldo_carry: insertData.saldo_carry,
       saldo_current_year: insertData.saldo_current_year,
-      total_used: insertData.used_n2_year + insertData.used_carry_over_days + insertData.used_current_year_days
-    })
+      total_used:
+        insertData.used_n2_year +
+        insertData.used_carry_over_days +
+        insertData.used_current_year_days,
+    });
 
     const { data, error } = await supabaseAdmin
       .from("leave_requests")
       .insert(insertData)
       .select()
-      .single()
+      .single();
 
     if (error) {
-      console.error("Error menyimpan permintaan cuti:", error)
-      return NextResponse.json({
-        error: "Failed to create leave request",
-        details: error.message,
-        code: error.code
-      }, { status: 500 })
+      console.error("Error menyimpan permintaan cuti:", error);
+      return NextResponse.json(
+        {
+          error: "Failed to create leave request",
+          details: error.message,
+          code: error.code,
+        },
+        { status: 500 }
+      );
     }
 
-    console.log("Permintaan cuti berhasil dibuat:", data)
-    return NextResponse.json({ message: "Leave request created successfully", leaveRequest: data }, { status: 201 })
+    console.log("Permintaan cuti berhasil dibuat:", data);
+    return NextResponse.json(
+      { message: "Leave request created successfully", leaveRequest: data },
+      { status: 201 }
+    );
   } catch (error) {
-    console.error("Create leave request error:", error)
-    return NextResponse.json({
-      error: "Internal server error",
-      details: error instanceof Error ? error.message : "Unknown error"
-    }, { status: 500 })
+    console.error("Create leave request error:", error);
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    );
   }
 }
 
 export async function PATCH(request: NextRequest) {
   try {
-    const token = request.cookies.get("auth_token")?.value
+    const token = request.cookies.get("auth_token")?.value;
     if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const payload = await verifyJWT(token)
+    const payload = await verifyJWT(token);
     if (!payload) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 })
+      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
     }
 
-    const body = await request.json()
-    const { leaveRequestId, action, type, rejectionReason, signatureDate, signed } = body
+    const body = await request.json();
+    const { leaveRequestId, action, type, rejectionReason, signatureDate, signed } = body;
 
     console.log("PATCH request received with data:", {
       leaveRequestId,
@@ -428,8 +477,8 @@ export async function PATCH(request: NextRequest) {
       type,
       rejectionReason: rejectionReason ? "provided" : "not provided",
       signatureDate: signatureDate ? "provided" : "not provided",
-      signed
-    })
+      signed,
+    });
 
     if (!leaveRequestId || !action || !type) {
       const missingFields = [];
@@ -438,21 +487,25 @@ export async function PATCH(request: NextRequest) {
       if (!type) missingFields.push("type");
 
       console.error("Missing required fields:", missingFields.join(", "));
-      return NextResponse.json({
-        error: "Missing required fields",
-        details: `Missing: ${missingFields.join(", ")}`
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          error: "Missing required fields",
+          details: `Missing: ${missingFields.join(", ")}`,
+        },
+        { status: 400 }
+      );
     }
 
     if (!supabaseAdmin) {
-      throw new Error("Supabase admin client not initialized")
+      throw new Error("Supabase admin client not initialized");
     }
 
     // Fetch current leave request
     console.log("Fetching leave request with ID:", leaveRequestId);
     const { data: currentRequest, error: fetchError } = await supabaseAdmin
       .from("leave_requests")
-      .select(`
+      .select(
+        `
         *,
         requester:user_id (
           id,
@@ -462,7 +515,8 @@ export async function PATCH(request: NextRequest) {
           workunit,
           nip,
           address,
-          phone
+          phone,
+          masa_kerja
         ),
         supervisor:supervisor_id (
           id,
@@ -474,35 +528,45 @@ export async function PATCH(request: NextRequest) {
           name,
           nip
         )
-      `)
+      `
+      )
       .eq("id", leaveRequestId)
-      .single()
+      .single();
 
     if (fetchError) {
       console.error("Error fetching leave request:", {
         error: fetchError,
         leaveRequestId,
         message: fetchError.message,
-        code: fetchError.code
+        code: fetchError.code,
       });
-      return NextResponse.json({
-        error: "Leave request not found",
-        details: fetchError.message,
-        code: fetchError.code
-      }, { status: 404 })
+      return NextResponse.json(
+        {
+          error: "Leave request not found",
+          details: fetchError.message,
+          code: fetchError.code,
+        },
+        { status: 404 }
+      );
     }
 
     if (!currentRequest) {
       console.error("Leave request not found with ID:", leaveRequestId);
-      return NextResponse.json({ error: "Leave request not found", details: "No data returned from database" }, { status: 404 })
+      return NextResponse.json(
+        { error: "Leave request not found", details: "No data returned from database" },
+        { status: 404 }
+      );
     }
 
     // Check if user has permission to approve/reject
-    const isSupervisor = currentRequest.supervisor_id === payload.id
-    const isAuthorizedOfficer = currentRequest.authorized_officer_id === payload.id
+    const isSupervisor = currentRequest.supervisor_id === payload.id;
+    const isAuthorizedOfficer = currentRequest.authorized_officer_id === payload.id;
 
     if (!isSupervisor && !isAuthorizedOfficer && payload.role !== "admin") {
-      return NextResponse.json({ error: "Unauthorized to perform this action" }, { status: 403 })
+      return NextResponse.json(
+        { error: "Unauthorized to perform this action" },
+        { status: 403 }
+      );
     }
 
     // Prepare update data
@@ -518,6 +582,9 @@ export async function PATCH(request: NextRequest) {
       } else if (action === "Rejected") {
         updateData.status = "Rejected";
         updateData.rejection_reason = rejectionReason;
+
+        // Kembalikan saldo cuti ketika ditolak oleh supervisor
+        await restoreLeaveBalance(currentRequest);
       }
     } else if (type === "authorized_officer") {
       updateData.authorized_officer_status = action;
@@ -535,70 +602,65 @@ export async function PATCH(request: NextRequest) {
             console.error("Google Script Endpoint tidak dikonfigurasi");
           } else {
             // Siapkan data untuk dikirim ke Google Script
-        const requestData = {
+            const requestData = {
               id: currentRequest.id,
-          namapegawai: currentRequest.requester?.name || "",
-          jabatan: currentRequest.requester?.position || "",
-          unit: currentRequest.requester?.workunit || "",
-          nip_pegawai: currentRequest.requester?.nip || "",
-          jenisCuti: currentRequest.type,
-          tanggalMulai: currentRequest.start_date,
-          tanggalSelesai: currentRequest.end_date,
-          jumlahHari: currentRequest.workingdays,
-          alasan: currentRequest.reason || "",
+              namapegawai: currentRequest.requester?.name || "",
+              jabatan: currentRequest.requester?.position || "",
+              unit: currentRequest.requester?.workunit || "",
+              nip_pegawai: currentRequest.requester?.nip || "",
+              jenisCuti: currentRequest.type,
+              tanggalMulai: currentRequest.start_date,
+              tanggalSelesai: currentRequest.end_date,
+              jumlahHari: currentRequest.workingdays,
+              alasan: currentRequest.reason || "",
               saldoawal_n1: currentRequest.saldo_carry,
               saldo_ntahun: currentRequest.saldo_current_year,
               saldo_n2_tahun: currentRequest.saldo_n2_year || 0,
-              saldo_digunakan: {
-                n2_tahun: currentRequest.used_n2_year || 0,
-                carry_over: currentRequest.used_carry_over_days || 0,
-                tahun_berjalan: currentRequest.used_current_year_days || 0,
-                total: (currentRequest.used_n2_year || 0) +
-                       (currentRequest.used_carry_over_days || 0) +
-                       (currentRequest.used_current_year_days || 0)
-              },
+              n2_tahun: currentRequest.used_n2_year || 0,
+              n1_tahun: currentRequest.used_carry_over_days || 0,
+              ntahun: currentRequest.used_current_year_days || 0,
               masa_kerja: currentRequest.requester?.masa_kerja || "",
-          nama_supervisor: currentRequest.supervisor?.name || "",
-          nip_supervisor: currentRequest.supervisor?.nip || "",
-          nama_officier: currentRequest.authorized_officer?.name || "",
-          nip_officier: currentRequest.authorized_officer?.nip || "",
-          created_at: currentRequest.created_at,
-          alamat: currentRequest.requester?.address || currentRequest.address || "",
-          telp: currentRequest.requester?.phone || currentRequest.phone || ""
-        };
+              nama_supervisor: currentRequest.supervisor?.name || "",
+              nip_supervisor: currentRequest.supervisor?.nip || "",
+              nama_officier: currentRequest.authorized_officer?.name || "",
+              nip_officier: currentRequest.authorized_officer?.nip || "",
+              created_at: currentRequest.created_at,
+              alamat: currentRequest.requester?.address || currentRequest.address || "",
+              telp: currentRequest.requester?.phone || currentRequest.phone || "",
+            };
 
             console.log("Mengirim data ke Google Script:", requestData);
 
             // Set timeout 30 detik
-        const controller = new AbortController();
+            const controller = new AbortController();
             const timeoutId = setTimeout(() => {
               controller.abort();
               console.log("Request ke Google Script timeout setelah 30 detik");
             }, 30000);
 
-          const response = await fetch(googleScriptEndpoint, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(requestData),
+            const response = await fetch(googleScriptEndpoint, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(requestData),
               signal: controller.signal,
-              keepalive: true
-          });
-
-          clearTimeout(timeoutId);
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error("Google Script returned error:", {
-              status: response.status,
-              statusText: response.statusText,
-              body: errorText
+              keepalive: true,
             });
-          } else {
-            const responseText = await response.text();
-            try {
-              if (responseText.trim()) {
+
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error("Google Script returned error:", {
+                status: response.status,
+                statusText: response.statusText,
+                body: errorText,
+              });
+            } else {
+              const responseText = await response.text();
+              try {
+                if (responseText.trim()) {
                   const responseData = JSON.parse(responseText);
                   console.log("Response dari Google Script:", responseData);
 
@@ -620,6 +682,9 @@ export async function PATCH(request: NextRequest) {
       } else if (action === "Rejected") {
         updateData.status = "Rejected";
         updateData.rejection_reason = rejectionReason;
+
+        // Kembalikan saldo cuti ketika ditolak oleh authorized officer
+        await restoreLeaveBalance(currentRequest);
       }
     }
 
@@ -631,19 +696,72 @@ export async function PATCH(request: NextRequest) {
 
     if (updateError) {
       console.error("Error updating leave request:", updateError);
-      return NextResponse.json(
-        { error: "Failed to update leave request" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Failed to update leave request" }, { status: 500 });
     }
 
     return NextResponse.json({ message: "Leave request updated successfully" });
-
   } catch (error) {
     console.error("Error in PATCH /api/leave-requests:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+// Tambahkan fungsi helper untuk mengembalikan saldo cuti
+async function restoreLeaveBalance(leaveRequest: any) {
+  try {
+    // Ambil data pegawai
+    const { data: userData, error: userError } = await supabaseAdmin
+      .from("pegawai")
+      .select("leave_balance")
+      .eq("id", leaveRequest.user_id)
+      .single();
+
+    if (userError || !userData) {
+      console.error("Error fetching user data for balance restoration:", userError);
+      return;
+    }
+
+    const leaveBalance = userData.leave_balance || {};
+    const currentYear = new Date().getFullYear();
+    const previousYear = currentYear - 1;
+    const twoYearsAgo = currentYear - 2;
+
+    // Kembalikan saldo yang telah digunakan
+    const updatedLeaveBalance = { ...leaveBalance };
+
+    // Kembalikan saldo 2 tahun lalu
+    if (leaveRequest.used_n2_year > 0) {
+      const twoYearsAgoStr = twoYearsAgo.toString();
+      updatedLeaveBalance[twoYearsAgoStr] =
+        (updatedLeaveBalance[twoYearsAgoStr] || 0) + leaveRequest.used_n2_year;
+    }
+
+    // Kembalikan saldo carry over (tahun lalu)
+    if (leaveRequest.used_carry_over_days > 0) {
+      const prevYearStr = previousYear.toString();
+      updatedLeaveBalance[prevYearStr] =
+        (updatedLeaveBalance[prevYearStr] || 0) + leaveRequest.used_carry_over_days;
+    }
+
+    // Kembalikan saldo tahun berjalan
+    if (leaveRequest.used_current_year_days > 0) {
+      const currentYearStr = currentYear.toString();
+      updatedLeaveBalance[currentYearStr] =
+        (updatedLeaveBalance[currentYearStr] || 0) + leaveRequest.used_current_year_days;
+    }
+
+    // Update saldo di database
+    const { error: updateError } = await supabaseAdmin
+      .from("pegawai")
+      .update({ leave_balance: updatedLeaveBalance })
+      .eq("id", leaveRequest.user_id);
+
+    if (updateError) {
+      console.error("Error restoring leave balance:", updateError);
+    } else {
+      console.log("Leave balance restored successfully for user:", leaveRequest.user_id);
+    }
+  } catch (error) {
+    console.error("Error in restoreLeaveBalance:", error);
   }
 }

@@ -517,6 +517,17 @@ export function LeaveRequestTable({ userId }: LeaveRequestTableProps) {
                   <div>{request?.reason || "-"}</div>
                 </div>
 
+                {/* Tambahkan section untuk alasan penolakan */}
+                {(request?.status === "Rejected" || 
+                  request?.supervisor_status === "Rejected" || 
+                  request?.authorized_officer_status === "Rejected") && 
+                  request?.rejection_reason && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div className="text-sm font-medium text-red-800 mb-2">Alasan Penolakan</div>
+                    <div className="text-red-700">{request.rejection_reason}</div>
+                  </div>
+                )}
+
                 <div>
                   <div className="text-sm font-medium text-gray-500">Tanggal Pengajuan</div>
                   <div>{request?.created_at ? format(new Date(request.created_at), "dd MMMM yyyy, HH:mm") : "-"}</div>
