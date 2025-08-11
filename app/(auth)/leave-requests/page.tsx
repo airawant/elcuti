@@ -57,7 +57,7 @@ export default function LeaveRequestPage() {
         used_current_year_days: 0,
         leave_year: new Date().getFullYear()
       }
-      
+
       // Add the leave request
       await addLeaveRequest({
         ...leaveRequest,
@@ -71,7 +71,7 @@ export default function LeaveRequestPage() {
         description: "Permintaan cuti Anda telah berhasil diajukan dan menunggu persetujuan.",
         variant: "default",
       })
-      
+
       // Refresh halaman untuk memastikan data terupdate
       router.refresh()
     } catch (error) {

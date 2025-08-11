@@ -43,6 +43,8 @@ create table public.leave_requests (
   constraint leave_requests_workingdays_check check ((workingdays > 0)),
   constraint leave_days_check check (
     (
+      type != 'Cuti Tahunan'
+    ) or (
       (used_carry_over_days >= 0)
       and (used_current_year_days >= 0)
       and (used_n2_year >= 0)

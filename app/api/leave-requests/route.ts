@@ -29,6 +29,7 @@ const leaveRequestSchema = z.object({
   used_carry_over_days: z.number().optional(),
   used_current_year_days: z.number().optional(),
   used_n2_year: z.number().optional(),
+  file_lampiran: z.string().optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -319,90 +320,98 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Validasi saldo cuti
-    const totalSaldo = twoYearsAgoBalance + carryOverBalance + currentYearBalance;
-    const totalUsed = usedTwoYearsAgo + usedCarryOver + usedCurrentYear;
+    // Validasi saldo cuti hanya untuk Cuti Tahunan
+    if (leaveRequestData.type === "Cuti Tahunan") {
+      const totalSaldo = twoYearsAgoBalance + carryOverBalance + currentYearBalance;
+      const totalUsed = usedTwoYearsAgo + usedCarryOver + usedCurrentYear;
 
-    if (totalUsed > totalSaldo) {
-      return NextResponse.json(
-        {
-          error: "Insufficient leave balance",
-          details: `Saldo cuti tidak mencukupi. Total saldo: ${totalSaldo} hari, permintaan: ${workingDays} hari`,
-        },
-        { status: 400 }
-      );
-    }
+      if (totalUsed > totalSaldo) {
+        return NextResponse.json(
+          {
+            error: "Insufficient leave balance",
+            details: `Saldo cuti tidak mencukupi. Total saldo: ${totalSaldo} hari, permintaan: ${workingDays} hari`,
+          },
+          { status: 400 }
+        );
+      }
 
-    // Validasi bahwa total penggunaan sama dengan workingDays
-    if (totalUsed !== workingDays) {
-      return NextResponse.json(
-        {
-          error: "Invalid leave usage",
-          details: `Total penggunaan saldo (${totalUsed} hari) tidak sama dengan hari kerja (${workingDays} hari)`,
-        },
-        { status: 400 }
-      );
-    }
+      // Validasi bahwa total penggunaan sama dengan workingDays
+      if (totalUsed !== workingDays) {
+        return NextResponse.json(
+          {
+            error: "Invalid leave usage",
+            details: `Total penggunaan saldo (${totalUsed} hari) tidak sama dengan hari kerja (${workingDays} hari)`,
+          },
+          { status: 400 }
+        );
+      }
 
-    // Potong saldo cuti di tabel pegawai
-    const updatedLeaveBalance = { ...leaveBalance };
+      // Potong saldo cuti di tabel pegawai hanya untuk Cuti Tahunan
+      const updatedLeaveBalance = { ...leaveBalance };
 
-    // Potong saldo 2 tahun lalu jika digunakan
-    if (usedTwoYearsAgo > 0) {
-      const twoYearsAgoStr = twoYearsAgo.toString();
-      updatedLeaveBalance[twoYearsAgoStr] = Math.max(
-        0,
-        (updatedLeaveBalance[twoYearsAgoStr] || 0) - usedTwoYearsAgo
-      );
-    }
+      // Potong saldo 2 tahun lalu jika digunakan
+      if (usedTwoYearsAgo > 0) {
+        const twoYearsAgoStr = twoYearsAgo.toString();
+        updatedLeaveBalance[twoYearsAgoStr] = Math.max(
+          0,
+          (updatedLeaveBalance[twoYearsAgoStr] || 0) - usedTwoYearsAgo
+        );
+      }
 
-    // Potong saldo carry over jika digunakan
-    if (usedCarryOver > 0) {
-      const prevYearStr = previousYear.toString();
-      updatedLeaveBalance[prevYearStr] = Math.max(
-        0,
-        (updatedLeaveBalance[prevYearStr] || 0) - usedCarryOver
-      );
-    }
+      // Potong saldo carry over jika digunakan
+      if (usedCarryOver > 0) {
+        const prevYearStr = previousYear.toString();
+        updatedLeaveBalance[prevYearStr] = Math.max(
+          0,
+          (updatedLeaveBalance[prevYearStr] || 0) - usedCarryOver
+        );
+      }
 
-    // Potong saldo tahun berjalan
-    if (usedCurrentYear > 0) {
-      const currentYearStr = currentYear.toString();
-      updatedLeaveBalance[currentYearStr] = Math.max(
-        0,
-        (updatedLeaveBalance[currentYearStr] || 12) - usedCurrentYear
-      );
-    }
+      // Potong saldo tahun berjalan
+      if (usedCurrentYear > 0) {
+        const currentYearStr = currentYear.toString();
+        updatedLeaveBalance[currentYearStr] = Math.max(
+          0,
+          (updatedLeaveBalance[currentYearStr] || 12) - usedCurrentYear
+        );
+      }
 
-    // Update saldo di tabel pegawai
-    const { error: updateBalanceError } = await supabaseAdmin
-      .from("pegawai")
-      .update({ leave_balance: updatedLeaveBalance })
-      .eq("id", leaveRequestData.user_id);
+      // Update saldo di tabel pegawai
+      const { error: updateBalanceError } = await supabaseAdmin
+        .from("pegawai")
+        .update({ leave_balance: updatedLeaveBalance })
+        .eq("id", leaveRequestData.user_id);
 
-    if (updateBalanceError) {
-      console.error("Error updating leave balance:", updateBalanceError);
-      return NextResponse.json(
-        {
-          error: "Failed to update leave balance",
-          details: updateBalanceError.message,
-        },
-        { status: 500 }
-      );
+      if (updateBalanceError) {
+        console.error("Error updating leave balance:", updateBalanceError);
+        return NextResponse.json(
+          {
+            error: "Failed to update leave balance",
+            details: updateBalanceError.message,
+          },
+          { status: 500 }
+        );
+      }
+    } else {
+      // Untuk cuti selain Cuti Tahunan, set semua penggunaan saldo ke 0
+      usedTwoYearsAgo = 0;
+      usedCarryOver = 0;
+      usedCurrentYear = 0;
     }
 
     // Insert leave request into database using admin client
     const insertData = {
       id: leaveRequestId,
       ...leaveRequestData,
-      saldo_carry: carryOverBalance,
-      saldo_current_year: currentYearBalance,
-      saldo_n2_year: twoYearsAgoBalance,
+      saldo_carry: leaveRequestData.type === "Cuti Tahunan" ? carryOverBalance : 0,
+      saldo_current_year: leaveRequestData.type === "Cuti Tahunan" ? currentYearBalance : 0,
+      saldo_n2_year: leaveRequestData.type === "Cuti Tahunan" ? twoYearsAgoBalance : 0,
       created_at: new Date().toISOString(),
       used_carry_over_days: usedCarryOver,
       used_current_year_days: usedCurrentYear,
       used_n2_year: usedTwoYearsAgo,
       leave_year: currentYear,
+      file_lampiran: leaveRequestData.file_lampiran || null,
     };
 
     console.log("Data yang akan disimpan ke database:", {
@@ -689,6 +698,10 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Update status permintaan cuti
+    if (!supabaseAdmin) {
+      throw new Error("Supabase admin client not initialized");
+    }
+
     const { error: updateError } = await supabaseAdmin
       .from("leave_requests")
       .update(updateData)
@@ -709,6 +722,10 @@ export async function PATCH(request: NextRequest) {
 // Tambahkan fungsi helper untuk mengembalikan saldo cuti
 async function restoreLeaveBalance(leaveRequest: any) {
   try {
+    if (!supabaseAdmin) {
+      throw new Error("Supabase admin client not initialized");
+    }
+
     // Ambil data pegawai
     const { data: userData, error: userError } = await supabaseAdmin
       .from("pegawai")

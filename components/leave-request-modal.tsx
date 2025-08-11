@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Check, Calendar, Lock, Search, X } from "lucide-react";
+import { Check, Calendar, Lock, Search, X, ExternalLink } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -54,6 +54,8 @@ interface LeaveRequestSubmission {
   saldo_n2_year: number;
   saldo_carry: number;
   saldo_current_year: number;
+  link_file?: string | null;
+  file_lampiran?: string | null;
 }
 
 // Update the interface to include mode for different views
@@ -87,6 +89,9 @@ export function LeaveRequestModal({
     startDate: "",
     endDate: "",
     totalDays: 0,
+    validationErrors: {
+      duration: null,
+    },
     workingdays: 0,
     address: "",
     phone: "",
@@ -113,6 +118,10 @@ export function LeaveRequestModal({
     usedTwoYearsAgo: 0,
     usedPrevYear: 0,
     usedCurrentYear: 0,
+
+    // File attachment
+    attachment: null as File | null,
+    attachmentUrl: "",
   });
 
   const [holidaysInRange, setHolidaysInRange] = useState<any[]>([]);
@@ -200,10 +209,10 @@ export function LeaveRequestModal({
         .reduce((total, req) => total + (req.used_current_year_days || 0), 0);
 
       // Hitung sisa saldo
-    const remainingCarryOver = previousYearBalance; // Gunakan nilai langsung dari leave_balance
-    const remainingTwoYearsAgo = twoYearsAgoBalance; // Gunakan nilai langsung dari leave_balance
-    const remainingCurrentYear = currentYearBalance; // Gunakan nilai langsung dari leave_balance
-    const remainingTotal = remainingCarryOver + remainingTwoYearsAgo + remainingCurrentYear;
+      const remainingCarryOver = previousYearBalance; // Gunakan nilai langsung dari leave_balance
+      const remainingTwoYearsAgo = twoYearsAgoBalance; // Gunakan nilai langsung dari leave_balance
+      const remainingCurrentYear = currentYearBalance; // Gunakan nilai langsung dari leave_balance
+      const remainingTotal = remainingCarryOver + remainingTwoYearsAgo + remainingCurrentYear;
 
       return {
         initialBalance: currentYearBalance,
@@ -410,7 +419,16 @@ export function LeaveRequestModal({
         }
       }
     }
-  }, [isOpen, user, users, leaveRequests, mode, requestData, approverType, calculateLeaveBalances]);
+  }, [
+    isOpen,
+    user,
+    users,
+    leaveRequests,
+    mode,
+    requestData,
+    approverType,
+    calculateLeaveBalances,
+  ]);
 
   useEffect(() => {
     console.log("Form data updated:", formData);
@@ -419,10 +437,47 @@ export function LeaveRequestModal({
   // Handle form field changes
   const handleChange = (field: string, value: any) => {
     console.log(`Changing field ${field} to`, value);
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+    setFormData((prev) => {
+      const updatedData = {
+        ...prev,
+        [field]: value,
+      };
+
+      // Validasi durasi cuti saat mengubah jenis cuti atau tanggal
+      if (
+        (field === "leaveType" &&
+          (value === "Cuti Besar" || value === "Cuti Melahirkan") &&
+          prev.totalDays > 90) ||
+        ((field === "startDate" || field === "endDate") &&
+          (prev.leaveType === "Cuti Besar" || prev.leaveType === "Cuti Melahirkan") &&
+          prev.totalDays > 90)
+      ) {
+        // Update validation errors
+        updatedData.validationErrors = {
+          ...prev.validationErrors,
+          duration: `${
+            field === "leaveType" ? value : prev.leaveType
+          } tidak boleh lebih dari 90 hari kalender`,
+        };
+
+        toast({
+          title: "Durasi cuti melebihi batas",
+          description: `${
+            field === "leaveType" ? value : prev.leaveType
+          } tidak boleh lebih dari 90 hari kalender`,
+          variant: "destructive",
+        });
+      } else if (field === "leaveType" || field === "startDate" || field === "endDate") {
+        // Reset validation error when changing leave type to non-restricted type
+        // or when changing dates
+        updatedData.validationErrors = {
+          ...prev.validationErrors,
+          duration: null,
+        };
+      }
+
+      return updatedData;
+    });
   };
 
   // Handle leave calculation results
@@ -444,6 +499,18 @@ export function LeaveRequestModal({
     }));
     setHolidaysInRange(holidaysInRange);
     setWeekendsInRange(weekends);
+
+    // Validasi real-time untuk cuti besar dan cuti melahirkan
+    if (
+      (formData.leaveType === "Cuti Besar" || formData.leaveType === "Cuti Melahirkan") &&
+      totalDays > 90
+    ) {
+      toast({
+        title: "Durasi Cuti Melebihi Batas",
+        description: `${formData.leaveType} tidak boleh lebih dari 90 hari kalender. Durasi yang dipilih: ${totalDays} hari.`,
+        variant: "destructive",
+      });
+    }
   };
 
   // Toggle supervisor signature
@@ -465,19 +532,19 @@ export function LeaveRequestModal({
 
   // Toggle authorized officer signature
   const toggleAuthorizedOfficerSignature = () => {
-      setFormData((prev) => {
+    setFormData((prev) => {
       const newSignedState = !prev.authorizedOfficerSigned;
       return {
-          ...prev,
-          authorizedOfficerSigned: newSignedState,
+        ...prev,
+        authorizedOfficerSigned: newSignedState,
         authorizedOfficerSignatureDate: newSignedState ? new Date().toISOString() : "",
-        };
-      });
+      };
+    });
 
-      toast({
+    toast({
       title: "Dokumen ditandatangani",
       description: "Dokumen telah berhasil ditandatangani",
-      });
+    });
   };
 
   // Handle supervisor selection
@@ -626,35 +693,102 @@ export function LeaveRequestModal({
   };
 
   // Fungsi validasi input saldo cuti
-  const validateLeaveUsage = (usedTwoYearsAgo: number, usedPrevYear: number, usedCurrentYear: number) => {
+  const validateLeaveUsage = (
+    usedTwoYearsAgo: number,
+    usedPrevYear: number,
+    usedCurrentYear: number
+  ) => {
+    // Jika bukan Cuti Tahunan, tidak perlu validasi saldo
+    if (formData.leaveType !== "Cuti Tahunan") {
+      return [];
+    }
+
     const totalUsed = usedTwoYearsAgo + usedPrevYear + usedCurrentYear;
     const errors: string[] = [];
 
     if (totalUsed !== formData.workingdays) {
-      errors.push(`Total penggunaan saldo (${totalUsed} hari) harus sama dengan jumlah hari cuti yang diajukan (${formData.workingdays} hari).`);
+      errors.push(
+        `Total penggunaan saldo (${totalUsed} hari) harus sama dengan jumlah hari cuti yang diajukan (${formData.workingdays} hari).`
+      );
     }
 
-    if (usedTwoYearsAgo > twoYearsAgoBalance) {
-      errors.push(`Penggunaan saldo tahun N-2 tidak boleh lebih dari ${twoYearsAgoBalance} hari.`);
+    if (usedTwoYearsAgo > remainingTwoYearsAgoBalance) {
+      errors.push(
+        `Penggunaan saldo tahun N-2 tidak boleh lebih dari ${remainingTwoYearsAgoBalance} hari.`
+      );
     }
 
-    if (usedPrevYear > carryOverBalance) {
-      errors.push(`Penggunaan saldo tahun N-1 tidak boleh lebih dari ${carryOverBalance} hari.`);
+    if (usedPrevYear > remainingCarryOverBalance) {
+      errors.push(
+        `Penggunaan saldo tahun N-1 tidak boleh lebih dari ${remainingCarryOverBalance} hari.`
+      );
     }
 
-    if (usedCurrentYear > initialBalance) {
-      errors.push(`Penggunaan saldo tahun berjalan tidak boleh lebih dari ${initialBalance} hari.`);
+    if (usedCurrentYear > remainingCurrentYearBalance) {
+      errors.push(
+        `Penggunaan saldo tahun berjalan tidak boleh lebih dari ${remainingCurrentYearBalance} hari.`
+      );
     }
 
     return errors;
   };
 
   // Handler perubahan input saldo cuti per tahun
-  const handleLeaveUsageChange = (field: 'usedTwoYearsAgo' | 'usedPrevYear' | 'usedCurrentYear', value: number) => {
+  const handleLeaveUsageChange = (
+    field: "usedTwoYearsAgo" | "usedPrevYear" | "usedCurrentYear",
+    value: number
+  ) => {
     setFormData((prev) => {
       const newData = { ...prev, [field]: value };
       return newData;
     });
+  };
+
+  // Handler untuk upload file
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    if (file) {
+      // Validasi ukuran file
+      if (
+        (formData.leaveType === "Cuti Besar" || formData.leaveType === "Cuti Sakit") &&
+        file.size > 2 * 1024 * 1024
+      ) {
+        toast({
+          title: "Ukuran file terlalu besar",
+          description: `Ukuran file maksimal untuk ${formData.leaveType} adalah 2MB`,
+          variant: "destructive",
+        });
+        e.target.value = "";
+        return;
+      } else if (formData.leaveType === "Cuti Melahirkan" && file.size > 2 * 1024 * 1024) {
+        toast({
+          title: "Ukuran file terlalu besar",
+          description: "Ukuran file maksimal adalah 2MB",
+          variant: "destructive",
+        });
+        e.target.value = "";
+        return;
+      }
+
+      // Validasi format file untuk Cuti Besar dan Cuti Sakit
+      if (
+        (formData.leaveType === "Cuti Besar" || formData.leaveType === "Cuti Sakit") &&
+        !file.type.includes("pdf")
+      ) {
+        toast({
+          title: "Format file tidak didukung",
+          description: `Hanya file PDF yang diperbolehkan untuk ${formData.leaveType}`,
+          variant: "destructive",
+        });
+        e.target.value = "";
+        return;
+      }
+
+      setFormData((prev) => ({
+        ...prev,
+        attachment: file,
+      }));
+    }
   };
 
   // Handler untuk perubahan pilihan saldo
@@ -682,13 +816,13 @@ export function LeaveRequestModal({
         selectedLeaveBalance: value,
         usedTwoYearsAgo,
         usedPrevYear,
-        usedCurrentYear
+        usedCurrentYear,
       };
     });
   };
 
   // Handle form submission for new leave request
-const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
@@ -704,6 +838,30 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
       if (!formData.endDate) {
         throw new Error("Tanggal selesai harus diisi");
+      }
+
+      // Validasi batas 90 hari kalender untuk cuti besar dan cuti melahirkan
+      if (
+        (formData.leaveType === "Cuti Besar" || formData.leaveType === "Cuti Melahirkan") &&
+        formData.totalDays > 90
+      ) {
+        toast({
+          title: "Durasi cuti melebihi batas",
+          description: `${formData.leaveType} tidak boleh lebih dari 90 hari kalender`,
+          variant: "destructive",
+        });
+
+        // Update validation errors
+        setFormData((prev) => ({
+          ...prev,
+          validationErrors: {
+            ...prev.validationErrors,
+            duration: `${formData.leaveType} tidak boleh lebih dari 90 hari kalender`,
+          },
+        }));
+
+        setIsSubmitting(false);
+        return;
       }
 
       if (!formData.supervisorId) {
@@ -732,6 +890,44 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         throw new Error("Nomor telepon harus diisi");
       }
 
+      // Validasi file lampiran
+      if (
+        !formData.attachment &&
+        (formData.leaveType === "Cuti Sakit" ||
+          formData.leaveType === "Cuti Melahirkan" ||
+          formData.leaveType === "Cuti Besar")
+      ) {
+        throw new Error("Lampiran harus diunggah untuk jenis cuti ini");
+      }
+
+      // Upload file jika ada
+      let fileUrl = "";
+      if (formData.attachment) {
+        const fileName = `${user.id}_${Date.now()}_${formData.attachment.name}`;
+        const formData2 = new FormData();
+        formData2.append("file", formData.attachment);
+
+        try {
+          const uploadResponse = await fetch(
+            `/api/upload?fileName=${encodeURIComponent(fileName)}&bucket=lampiran`,
+            {
+              method: "POST",
+              body: formData2,
+            }
+          );
+
+          if (!uploadResponse.ok) {
+            throw new Error("Gagal mengunggah file");
+          }
+
+          const uploadResult = await uploadResponse.json();
+          fileUrl = uploadResult.url;
+        } catch (error) {
+          console.error("Error uploading file:", error);
+          throw new Error("Gagal mengunggah file lampiran");
+        }
+      }
+
       // Prepare data for submission
       const submissionData: LeaveRequestSubmission = {
         user_id: user.id,
@@ -748,6 +944,8 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         supervisor_status: "Pending",
         authorized_officer_status: "Pending",
         supervisor_viewed: false,
+        link_file: fileUrl || null,
+        file_lampiran: fileUrl || null,
         authorized_officer_viewed: false,
         supervisor_signed: false,
         authorized_officer_signed: false,
@@ -783,22 +981,20 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
           }
         }
 
-        // Validasi bahwa total penggunaan sama dengan workingDays
+        // Validasi akan dilakukan oleh validateLeaveUsage
         const totalUsed = usedTwoYearsAgo + usedCarryOver + usedCurrentYear;
-        if (totalUsed !== workingDays) {
-          throw new Error(`Total penggunaan saldo (${totalUsed} hari) tidak sama dengan hari kerja (${workingDays} hari)`);
-        }
-
-        // Validasi bahwa penggunaan tidak melebihi saldo yang tersedia
-        if (usedTwoYearsAgo > remainingTwoYearsAgoBalance) {
-          throw new Error(`Penggunaan saldo tahun N-2 (${usedTwoYearsAgo} hari) melebihi saldo yang tersedia (${remainingTwoYearsAgoBalance} hari)`);
-        }
-        if (usedCarryOver > remainingCarryOverBalance) {
-          throw new Error(`Penggunaan saldo tahun N-1 (${usedCarryOver} hari) melebihi saldo yang tersedia (${remainingCarryOverBalance} hari)`);
-        }
-        if (usedCurrentYear > remainingCurrentYearBalance) {
-          throw new Error(`Penggunaan saldo tahun berjalan (${usedCurrentYear} hari) melebihi saldo yang tersedia (${remainingCurrentYearBalance} hari)`);
-        }
+        console.log(
+          `Total penggunaan saldo: ${totalUsed} hari, Hari kerja: ${workingDays} hari`
+        );
+        console.log(
+          `Saldo N-2: ${remainingTwoYearsAgoBalance} hari, Penggunaan: ${usedTwoYearsAgo} hari`
+        );
+        console.log(
+          `Saldo N-1: ${remainingCarryOverBalance} hari, Penggunaan: ${usedCarryOver} hari`
+        );
+        console.log(
+          `Saldo tahun berjalan: ${remainingCurrentYearBalance} hari, Penggunaan: ${usedCurrentYear} hari`
+        );
 
         // Tambahkan data penggunaan saldo ke submissionData
         submissionData.used_n2_year = usedTwoYearsAgo;
@@ -820,12 +1016,25 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
           initialBalance,
           remainingTwoYearsAgoBalance,
           remainingCarryOverBalance,
-          remainingCurrentYearBalance
+          remainingCurrentYearBalance,
         });
+      } else {
+        // Untuk jenis cuti selain Cuti Tahunan, set nilai penggunaan saldo ke 0
+        submissionData.used_n2_year = 0;
+        submissionData.used_carry_over_days = 0;
+        submissionData.used_current_year_days = 0;
+        submissionData.saldo_n2_year = twoYearsAgoBalance;
+        submissionData.saldo_carry = carryOverBalance;
+        submissionData.saldo_current_year = initialBalance;
       }
 
       // Validasi penggunaan saldo cuti
-      const usageErrors = validateLeaveUsage(formData.usedTwoYearsAgo, formData.usedPrevYear, formData.usedCurrentYear);
+      // Pastikan nilai yang divalidasi adalah nilai yang akan digunakan dalam submissionData
+      const usageErrors = validateLeaveUsage(
+        submissionData.used_n2_year,
+        submissionData.used_carry_over_days,
+        submissionData.used_current_year_days
+      );
       if (usageErrors.length > 0) {
         throw new Error(usageErrors.join("\n"));
       }
@@ -903,7 +1112,6 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
       setTimeout(() => {
         onSubmit(approvalData);
       }, 100);
-
     } catch (error) {
       console.error("Error in supervisor action:", error);
       toast({
@@ -958,7 +1166,8 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
       action: status,
       type: "authorized_officer",
       rejectionReason: status === "Rejected" ? formData.rejectionReason : undefined,
-      signatureDate: status === "Approved" ? formData.authorizedOfficerSignatureDate : undefined,
+      signatureDate:
+        status === "Approved" ? formData.authorizedOfficerSignatureDate : undefined,
       signed: status === "Approved" ? formData.authorizedOfficerSigned : false,
     };
 
@@ -1148,6 +1357,62 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
               </div>
             </div>
 
+            {/* File Upload Component - Only shown for specific leave types */}
+            {mode === "create" &&
+              (formData.leaveType === "Cuti Sakit" ||
+                formData.leaveType === "Cuti Melahirkan" ||
+                formData.leaveType === "Cuti Besar") && (
+                <div className="border rounded-md overflow-hidden">
+                  <div className="bg-gray-100 px-4 py-2 font-medium">LAMPIRAN DOKUMEN</div>
+                  <div className="p-4">
+                    <div className="mb-2">
+                      <Label htmlFor="attachment">
+                        Unggah Dokumen Pendukung
+                        {formData.leaveType === "Cuti Sakit"
+                          ? "(Surat Keterangan Dokter)"
+                          : formData.leaveType === "Cuti Melahirkan"
+                          ? "(Surat Keterangan Melahirkan)"
+                          : "(Dokumen Pendukung Cuti Besar)"}
+                      </Label>
+                      <div className="mt-1">
+                        <Input
+                          id="attachment"
+                          type="file"
+                          onChange={handleFileUpload}
+                          accept={
+                            formData.leaveType === "Cuti Besar" ||
+                            formData.leaveType === "Cuti Sakit"
+                              ? ".pdf"
+                              : ".pdf,.jpg,.jpeg,.png"
+                          }
+                        />
+                      </div>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {formData.leaveType === "Cuti Besar" ||
+                        formData.leaveType === "Cuti Sakit"
+                          ? "Format yang didukung: PDF (Maks. 2MB)"
+                          : "Format yang didukung: PDF, JPG, JPEG, PNG (Maks. 2MB)"}
+                      </p>
+                      {formData.attachment && (
+                        <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded flex items-center justify-between">
+                          <span className="text-sm text-green-700">
+                            File dipilih: {formData.attachment.name}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleChange("attachment", null)}
+                            className="h-6 w-6 p-0 text-red-500"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
             {/* Group III: Leave Reason */}
             <div className="border rounded-md overflow-hidden">
               <div className="bg-gray-100 px-4 py-2 font-medium">III. ALASAN CUTI</div>
@@ -1160,6 +1425,25 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                   readOnly={mode !== "create"}
                   className={mode !== "create" ? "bg-gray-50" : ""}
                 />
+
+                {/* Tombol Lihat Lampiran - hanya tampil di mode view/approve jika ada file lampiran */}
+                {(mode === "view" || mode === "approve") && requestData?.file_lampiran && (
+                  <div className="mt-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        console.log("Opening file lampiran:", requestData.file_lampiran);
+                        window.open(requestData.file_lampiran, "_blank");
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      Lihat Lampiran
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1206,6 +1490,11 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                     />
                   </div>
                 </div>
+                {formData.validationErrors.duration && (
+                  <div className="text-red-500 text-sm mt-1">
+                    {formData.validationErrors.duration}
+                  </div>
+                )}
 
                 {/* Leave calculation component */}
                 {formData.startDate && formData.endDate && (
@@ -1230,11 +1519,17 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
                     {/* Pilihan saldo otomatis */}
                     <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                      <div className="text-sm font-medium text-blue-800 mb-2">Pilihan Saldo Otomatis:</div>
+                      <div className="text-sm font-medium text-blue-800 mb-2">
+                        Pilihan Saldo Otomatis:
+                      </div>
                       <div className="flex flex-wrap gap-2">
                         <Button
                           type="button"
-                          variant={formData.selectedLeaveBalance === "twoYearsAgo" ? "default" : "outline"}
+                          variant={
+                            formData.selectedLeaveBalance === "twoYearsAgo"
+                              ? "default"
+                              : "outline"
+                          }
                           size="sm"
                           onClick={() => handleSelectedLeaveBalanceChange("twoYearsAgo")}
                           disabled={remainingTwoYearsAgoBalance <= 0}
@@ -1243,7 +1538,11 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                         </Button>
                         <Button
                           type="button"
-                          variant={formData.selectedLeaveBalance === "carryOver" ? "default" : "outline"}
+                          variant={
+                            formData.selectedLeaveBalance === "carryOver"
+                              ? "default"
+                              : "outline"
+                          }
                           size="sm"
                           onClick={() => handleSelectedLeaveBalanceChange("carryOver")}
                           disabled={remainingCarryOverBalance <= 0}
@@ -1252,7 +1551,9 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                         </Button>
                         <Button
                           type="button"
-                          variant={formData.selectedLeaveBalance === "current" ? "default" : "outline"}
+                          variant={
+                            formData.selectedLeaveBalance === "current" ? "default" : "outline"
+                          }
                           size="sm"
                           onClick={() => handleSelectedLeaveBalanceChange("current")}
                           disabled={remainingCurrentYearBalance <= 0}
@@ -1276,45 +1577,72 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                         </thead>
                         <tbody>
                           <tr>
-                            <td className="px-2 py-1 border font-medium">{new Date().getFullYear() - 2}</td>
-                            <td className="px-2 py-1 border">{remainingTwoYearsAgoBalance} hari</td>
+                            <td className="px-2 py-1 border font-medium">
+                              {new Date().getFullYear() - 2}
+                            </td>
+                            <td className="px-2 py-1 border">
+                              {remainingTwoYearsAgoBalance} hari
+                            </td>
                             <td className="px-2 py-1 border">
                               <Input
                                 type="number"
                                 min={0}
                                 max={remainingTwoYearsAgoBalance}
                                 value={formData.usedTwoYearsAgo}
-                                onChange={e => handleLeaveUsageChange('usedTwoYearsAgo', Number(e.target.value))}
+                                onChange={(e) =>
+                                  handleLeaveUsageChange(
+                                    "usedTwoYearsAgo",
+                                    Number(e.target.value)
+                                  )
+                                }
                                 className="w-24"
                                 disabled={mode !== "create"}
                               />
                             </td>
                           </tr>
                           <tr>
-                            <td className="px-2 py-1 border font-medium">{new Date().getFullYear() - 1}</td>
-                            <td className="px-2 py-1 border">{remainingCarryOverBalance} hari</td>
+                            <td className="px-2 py-1 border font-medium">
+                              {new Date().getFullYear() - 1}
+                            </td>
+                            <td className="px-2 py-1 border">
+                              {remainingCarryOverBalance} hari
+                            </td>
                             <td className="px-2 py-1 border">
                               <Input
                                 type="number"
                                 min={0}
                                 max={remainingCarryOverBalance}
                                 value={formData.usedPrevYear}
-                                onChange={e => handleLeaveUsageChange('usedPrevYear', Number(e.target.value))}
+                                onChange={(e) =>
+                                  handleLeaveUsageChange(
+                                    "usedPrevYear",
+                                    Number(e.target.value)
+                                  )
+                                }
                                 className="w-24"
                                 disabled={mode !== "create"}
                               />
                             </td>
                           </tr>
                           <tr>
-                            <td className="px-2 py-1 border font-medium">{new Date().getFullYear()}</td>
-                            <td className="px-2 py-1 border">{remainingCurrentYearBalance} hari</td>
+                            <td className="px-2 py-1 border font-medium">
+                              {new Date().getFullYear()}
+                            </td>
+                            <td className="px-2 py-1 border">
+                              {remainingCurrentYearBalance} hari
+                            </td>
                             <td className="px-2 py-1 border">
                               <Input
                                 type="number"
                                 min={0}
                                 max={remainingCurrentYearBalance}
                                 value={formData.usedCurrentYear}
-                                onChange={e => handleLeaveUsageChange('usedCurrentYear', Number(e.target.value))}
+                                onChange={(e) =>
+                                  handleLeaveUsageChange(
+                                    "usedCurrentYear",
+                                    Number(e.target.value)
+                                  )
+                                }
                                 className="w-24"
                                 disabled={mode !== "create"}
                               />
@@ -1323,18 +1651,32 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                           <tr className="bg-gray-50">
                             <td className="px-2 py-1 border font-medium">Total</td>
                             <td className="px-2 py-1 border font-medium">
-                              {remainingTwoYearsAgoBalance + remainingCarryOverBalance + remainingCurrentYearBalance} hari
+                              {remainingTwoYearsAgoBalance +
+                                remainingCarryOverBalance +
+                                remainingCurrentYearBalance}{" "}
+                              hari
                             </td>
                             <td className="px-2 py-1 border font-medium">
-                              <span className={cn(
-                                "px-2 py-1 rounded text-xs",
-                                (formData.usedTwoYearsAgo + formData.usedPrevYear + formData.usedCurrentYear) === formData.workingdays
-                                  ? "bg-green-100 text-green-800"
-                                  : (formData.usedTwoYearsAgo + formData.usedPrevYear + formData.usedCurrentYear) > formData.workingdays
-                                  ? "bg-red-100 text-red-800"
-                                  : "bg-yellow-100 text-yellow-800"
-                              )}>
-                                {formData.usedTwoYearsAgo + formData.usedPrevYear + formData.usedCurrentYear} / {formData.workingdays} hari
+                              <span
+                                className={cn(
+                                  "px-2 py-1 rounded text-xs",
+                                  formData.usedTwoYearsAgo +
+                                    formData.usedPrevYear +
+                                    formData.usedCurrentYear ===
+                                    formData.workingdays
+                                    ? "bg-green-100 text-green-800"
+                                    : formData.usedTwoYearsAgo +
+                                        formData.usedPrevYear +
+                                        formData.usedCurrentYear >
+                                      formData.workingdays
+                                    ? "bg-red-100 text-red-800"
+                                    : "bg-yellow-100 text-yellow-800"
+                                )}
+                              >
+                                {formData.usedTwoYearsAgo +
+                                  formData.usedPrevYear +
+                                  formData.usedCurrentYear}{" "}
+                                / {formData.workingdays} hari
                               </span>
                             </td>
                           </tr>
@@ -1343,10 +1685,16 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                     </div>
                     {/* Validasi */}
                     {(() => {
-                      const errors = validateLeaveUsage(formData.usedTwoYearsAgo, formData.usedPrevYear, formData.usedCurrentYear);
+                      const errors = validateLeaveUsage(
+                        formData.usedTwoYearsAgo,
+                        formData.usedPrevYear,
+                        formData.usedCurrentYear
+                      );
                       return errors.length > 0 ? (
                         <div className="mt-2 text-red-600 text-xs space-y-1">
-                          {errors.map((err: string, idx: number) => <div key={idx}>{err}</div>)}
+                          {errors.map((err: string, idx: number) => (
+                            <div key={idx}>{err}</div>
+                          ))}
                         </div>
                       ) : null;
                     })()}
@@ -1358,7 +1706,9 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                   leaveType={formData.leaveType}
                   userId={user?.id}
                   mode={mode}
-                  selectedLeaveBalance={formData.selectedLeaveBalance as 'current' | 'twoYearsAgo' | 'carryOver'}
+                  selectedLeaveBalance={
+                    formData.selectedLeaveBalance as "current" | "twoYearsAgo" | "carryOver"
+                  }
                   usedTwoYearsAgo={formData.usedTwoYearsAgo}
                   usedPrevYear={formData.usedPrevYear}
                   usedCurrentYear={formData.usedCurrentYear}
@@ -1487,7 +1837,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                 )}
 
                 {mode === "approve" && approverType === "supervisor" && (
-                <div className="flex flex-col items-center pt-4">
+                  <div className="flex flex-col items-center pt-4">
                     <Button
                       type="button"
                       onClick={toggleSupervisorSignature}
@@ -1496,14 +1846,18 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                     >
                       {formData.supervisorSigned ? "TERTANDA" : "Tanda Tangan Di Atas Nama"}
                     </Button>
-                  <p className="font-medium">{formData.supervisorName}</p>
-                  <p className="text-sm">NIP. {formData.supervisorNIP || "-"}</p>
-                  {formData.supervisorSignatureDate && (
-                    <p className="text-xs text-gray-500 mt-1">
-                        Ditandatangani pada: {format(new Date(formData.supervisorSignatureDate), "dd MMM yyyy HH:mm")}
-                    </p>
-                  )}
-                </div>
+                    <p className="font-medium">{formData.supervisorName}</p>
+                    <p className="text-sm">NIP. {formData.supervisorNIP || "-"}</p>
+                    {formData.supervisorSignatureDate && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Ditandatangani pada:{" "}
+                        {format(
+                          new Date(formData.supervisorSignatureDate),
+                          "dd MMM yyyy HH:mm"
+                        )}
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
@@ -1586,23 +1940,31 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                 )}
 
                 {mode === "approve" && approverType === "authorized_officer" && (
-                <div className="flex flex-col items-center pt-4">
+                  <div className="flex flex-col items-center pt-4">
                     <Button
                       type="button"
                       onClick={toggleAuthorizedOfficerSignature}
                       variant={formData.authorizedOfficerSigned ? "default" : "outline"}
                       className="my-2"
                     >
-                      {formData.authorizedOfficerSigned ? "TERTANDA" : "Tanda Tangan Di Atas Nama"}
+                      {formData.authorizedOfficerSigned
+                        ? "TERTANDA"
+                        : "Tanda Tangan Di Atas Nama"}
                     </Button>
-                    <p className="font-medium">{formData.authorizedOfficerName || "Pilih Pejabat Berwenang"}</p>
-                  <p className="text-sm">NIP. {formData.authorizedOfficerNIP || "-"}</p>
-                  {formData.authorizedOfficerSignatureDate && (
-                    <p className="text-xs text-gray-500 mt-1">
-                        Ditandatangani pada: {format(new Date(formData.authorizedOfficerSignatureDate), "dd MMM yyyy HH:mm")}
+                    <p className="font-medium">
+                      {formData.authorizedOfficerName || "Pilih Pejabat Berwenang"}
                     </p>
-                  )}
-                </div>
+                    <p className="text-sm">NIP. {formData.authorizedOfficerNIP || "-"}</p>
+                    {formData.authorizedOfficerSignatureDate && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Ditandatangani pada:{" "}
+                        {format(
+                          new Date(formData.authorizedOfficerSignatureDate),
+                          "dd MMM yyyy HH:mm"
+                        )}
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
@@ -1640,10 +2002,11 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                       !formData.leaveReason ||
                       !formData.address ||
                       !formData.phone ||
-                      (formData.leaveType === "Cuti Tahunan" && (
-                        formData.workingdays > remainingBalance ||
-                        formData.workingdays <= 0
-                      ))
+                      (formData.leaveType === "Cuti Tahunan" &&
+                        (formData.workingdays > remainingBalance ||
+                          formData.workingdays <= 0)) ||
+                      // Nonaktifkan tombol jika ada error validasi durasi cuti
+                      (formData.validationErrors && formData.validationErrors.duration)
                     }
                   >
                     Ajukan
