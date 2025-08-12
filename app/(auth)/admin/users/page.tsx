@@ -53,6 +53,7 @@ const userFormSchema = z.object({
     message: "Address is required",
   }),
   masa_kerja: z.string().optional(),
+  tipe_pengguna: z.enum(["PNS", "PPPK"]).default("PNS"),
   isapprover: z.boolean().default(false),
   isauthorizedofficer: z.boolean().default(false),
   password: z.union([
@@ -103,6 +104,7 @@ export default function AdminUsersPage() {
       phone: "",
       address: "",
       masa_kerja: "",
+      tipe_pengguna: "PNS",
       isapprover: false,
       isauthorizedofficer: false,
       password: "",
@@ -126,6 +128,7 @@ export default function AdminUsersPage() {
       phone: "",
       address: "",
       masa_kerja: "",
+      tipe_pengguna: "PNS",
       isapprover: false,
       isauthorizedofficer: false,
       password: "",
@@ -167,6 +170,7 @@ export default function AdminUsersPage() {
           phone: userToEdit.phone || "",
           address: userToEdit.address || "",
           masa_kerja: (userToEdit as any).masa_kerja || "",
+          tipe_pengguna: userToEdit.tipe_pengguna || "PNS",
           isapprover: userToEdit.isapprover || false,
           isauthorizedofficer: userToEdit.isauthorizedofficer || false,
           password: "", // Password is optional for edit
@@ -189,7 +193,7 @@ export default function AdminUsersPage() {
       workunit: values.workunit,
       isapprover: values.isapprover,
       isauthorizedofficer: values.isauthorizedofficer,
-      masa_kerja: values.masa_kerja || null,
+      masa_kerja: values.masa_kerja || undefined,
     }
 
     console.log("Transformed values for API:", apiValues)
@@ -220,7 +224,7 @@ export default function AdminUsersPage() {
         workunit: updateValues.workunit,
         isapprover: updateValues.isapprover,
         isauthorizedofficer: updateValues.isauthorizedofficer,
-        masa_kerja: updateValues.masa_kerja || null,
+        masa_kerja: updateValues.masa_kerja || undefined,
       }
 
       console.log("Transformed values for API:", apiValues)
@@ -267,6 +271,7 @@ export default function AdminUsersPage() {
       "Email",
       "Telepon",
       "Alamat",
+      "Tipe Pengguna",
       `Sisa Saldo ${twoYearsAgo}`,
       `Sisa Saldo ${previousYear}`,
       `Sisa Saldo ${currentYear}`,
@@ -290,6 +295,7 @@ export default function AdminUsersPage() {
         user.email || "",
         user.phone || "",
         user.address || "",
+        user.tipe_pengguna || "PNS",
         twoYearsAgoRemainingBalance,
         previousYearRemainingBalance,
         currentYearRemainingBalance,
@@ -495,6 +501,27 @@ export default function AdminUsersPage() {
                             </FormItem>
                           )}
                         />
+                        <FormField
+                          control={addForm.control}
+                          name="tipe_pengguna"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Tipe Pengguna</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Pilih tipe pengguna" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="PNS">PNS</SelectItem>
+                                  <SelectItem value="PPPK">PPPK</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
                       </div>
 
                       <FormField
@@ -633,6 +660,7 @@ export default function AdminUsersPage() {
                       <TableHead>Peran</TableHead>
                       <TableHead>Jabatan</TableHead>
                       <TableHead>Satuan Kerja</TableHead>
+                      <TableHead>Tipe Pengguna</TableHead>
                       <TableHead className="relative">
                         <div className="flex items-center gap-1">
                           <span>Sisa Cuti {twoYearsAgo}</span>
@@ -695,6 +723,7 @@ export default function AdminUsersPage() {
                           <TableCell>{user.role === "admin" ? "Administrator" : "Pengguna"}</TableCell>
                           <TableCell>{user.position}</TableCell>
                           <TableCell>{user.workunit}</TableCell>
+                          <TableCell>{user.tipe_pengguna}</TableCell>
                           <TableCell className="text-center">
                             <div className="flex flex-col items-center">
                               <span className="font-medium">{twoYearsAgoRemainingBalance} hari</span>
@@ -886,6 +915,27 @@ export default function AdminUsersPage() {
                         <FormControl>
                           <Input type="date" placeholder="Pilih tanggal mulai kerja" {...field} />
                         </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editForm.control}
+                    name="tipe_pengguna"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tipe Pengguna</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Pilih tipe pengguna" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="PNS">PNS</SelectItem>
+                            <SelectItem value="PPPK">PPPK</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}

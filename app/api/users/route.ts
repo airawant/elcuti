@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     const { data: users, error } = await supabase
       .from("pegawai")
       .select(
-        "id, nip, name, role, position, workunit, email, phone, address, isapprover, isauthorizedofficer, leave_balance",
+        "id, nip, name, role, position, workunit, email, phone, address, masa_kerja, tipe_pengguna, isapprover, isauthorizedofficer, leave_balance",
       )
       .order("id", { ascending: true })
 

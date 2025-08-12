@@ -14,6 +14,7 @@ const userUpdateSchema = z.object({
   phone: z.string().optional(),
   address: z.string().optional(),
   masa_kerja: z.string().optional(),
+  tipe_pengguna: z.enum(["PNS", "PPPK"]).optional(),
   isapprover: z.boolean().optional(),
   isApprover: z.boolean().optional(),
   isauthorizedofficer: z.boolean().optional(),
@@ -80,6 +81,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     if (userData.phone !== undefined) updateData.phone = userData.phone
     if (userData.address !== undefined) updateData.address = userData.address
     if (hasMasaKerja) updateData.masa_kerja = masaKerjaValue
+    if (userData.tipe_pengguna !== undefined) updateData.tipe_pengguna = userData.tipe_pengguna
 
     if (hasIsApprover) updateData.isapprover = isApproverValue
     if (hasIsAuthorizedOfficer) updateData.isauthorizedofficer = isAuthorizedOfficerValue
@@ -141,6 +143,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       phone: data.phone,
       address: data.address,
       masa_kerja: data.masa_kerja,
+      tipe_pengguna: data.tipe_pengguna,
       isapprover: data.isapprover,
       isauthorizedofficer: data.isauthorizedofficer,
       leave_balance: data.leave_balance

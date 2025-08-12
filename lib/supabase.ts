@@ -46,6 +46,7 @@ export type Pegawai = {
   phone?: string
   address?: string
   masa_kerja?: string
+  tipe_pengguna?: "PNS" | "PPPK"
   isapprover?: boolean
   isauthorizedofficer?: boolean
   leave_balance?: Record<string, number>

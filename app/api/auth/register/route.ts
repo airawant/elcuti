@@ -14,6 +14,7 @@ const registerSchema = z.object({
   phone: z.string().optional(),
   address: z.string().optional(),
   masa_kerja: z.string().optional(),
+  tipe_pengguna: z.enum(["PNS", "PPPK"]).optional(),
   isapprover: z.boolean().optional(),
   isApprover: z.boolean().optional(),
   isauthorizedofficer: z.boolean().optional(),
@@ -113,6 +114,7 @@ export async function POST(request: NextRequest) {
       phone: userData.phone,
       address: userData.address,
       masa_kerja: masaKerjaValue,
+      tipe_pengguna: userData.tipe_pengguna || "PNS",
       isapprover: isApproverValue,
       isauthorizedofficer: isAuthorizedOfficerValue,
       password: hashedPassword,
@@ -142,12 +144,13 @@ export async function POST(request: NextRequest) {
         phone: dbData.phone,
         address: dbData.address,
         masa_kerja: dbData.masa_kerja,
+        tipe_pengguna: dbData.tipe_pengguna,
         isapprover: dbData.isapprover,
         isauthorizedofficer: dbData.isauthorizedofficer,
         password: dbData.password,
         leave_balance: dbData.leave_balance
       })
-      .select("id, nip, name, role, position, workunit, email, phone, address, masa_kerja, isapprover, isauthorizedofficer, leave_balance")
+      .select("id, nip, name, role, position, workunit, email, phone, address, masa_kerja, tipe_pengguna, isapprover, isauthorizedofficer, leave_balance")
       .single()
 
     if (createError) {
