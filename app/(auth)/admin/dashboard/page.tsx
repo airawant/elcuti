@@ -251,7 +251,14 @@ export default function AdminDashboardPage() {
 
                         return (
                           <TableRow key={request.id}>
-                            <TableCell>{employee?.name || "Unknown"}</TableCell>
+                            <TableCell>
+                              {employee?.name || "Unknown"}
+                              {employee?.tipe_pengguna && (
+                                <span className={`ml-2 px-1.5 py-0.5 text-xs rounded-md ${employee.tipe_pengguna === "PNS" ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"}`}>
+                                  {employee.tipe_pengguna}
+                                </span>
+                              )}
+                            </TableCell>
                             <TableCell>{request.type}</TableCell>
                             <TableCell>{duration} Hari</TableCell>
                             <TableCell>{getStatusBadge(request.status)}</TableCell>

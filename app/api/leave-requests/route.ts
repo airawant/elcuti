@@ -59,7 +59,8 @@ export async function GET(request: NextRequest) {
           id,
           name,
           position,
-          workunit
+          workunit,
+          tipe_pengguna
         ),
         supervisor:supervisor_id (
           id,

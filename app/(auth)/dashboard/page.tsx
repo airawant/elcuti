@@ -240,14 +240,27 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
-            {leaveTypes.map((type) => (
-              <LeaveCard
-                key={type.id}
-                title={type.name}
-                count={leaveCounts[type.id]}
-                type={type.id}
-              />
-            ))}
+            {leaveTypes
+              .filter((type) => {
+                // Hide specific leave types for PPPK users
+                if (user.tipe_pengguna === "PPPK") {
+                  const hiddenTypes = [
+                    "Cuti Di Luar Tanggungan Negara",
+                    "Cuti Karena Alasan Penting",
+                    "Cuti Besar"
+                  ];
+                  return !hiddenTypes.includes(type.name);
+                }
+                return true;
+              })
+              .map((type) => (
+                <LeaveCard
+                  key={type.id}
+                  title={type.name}
+                  count={leaveCounts[type.id]}
+                  type={type.id}
+                />
+              ))}
           </div>
 
           <div className="bg-white p-4 rounded-lg shadow-sm">
