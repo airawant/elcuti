@@ -157,9 +157,8 @@ export function LeaveRequestModal({
           remainingBalance: 12,
         };
 
-      // Dapatkan user
-      const targetUser = users.find((u) => u.id === userId);
-      if (!targetUser || !targetUser.leave_balance) {
+      // Langsung akses data user.leave_balance
+      if (!user || !user.leave_balance) {
         return {
           initialBalance: 12,
           carryOverBalance: 0,
@@ -176,9 +175,9 @@ export function LeaveRequestModal({
       const twoYearsAgo = currentYear - 2;
 
       // Ambil saldo dari leave_balance
-      const currentYearBalance = targetUser.leave_balance[currentYear.toString()] || 0;
-      const previousYearBalance = targetUser.leave_balance[previousYear.toString()] || 0;
-      const twoYearsAgoBalance = targetUser.leave_balance[twoYearsAgo.toString()] || 0;
+      const currentYearBalance = user.leave_balance[currentYear.toString()] || 0;
+      const previousYearBalance = user.leave_balance[previousYear.toString()] || 0;
+      const twoYearsAgoBalance = user.leave_balance[twoYearsAgo.toString()] || 0;
 
       // Penggunaan cuti tetap dihitung dari leaveRequests
       const usedLeave = leaveRequests
@@ -208,7 +207,6 @@ export function LeaveRequestModal({
         )
         .reduce((total, req) => total + (req.used_current_year_days || 0), 0);
 
-      // Hitung sisa saldo
       const remainingCarryOver = previousYearBalance; // Gunakan nilai langsung dari leave_balance
       const remainingTwoYearsAgo = twoYearsAgoBalance; // Gunakan nilai langsung dari leave_balance
       const remainingCurrentYear = currentYearBalance; // Gunakan nilai langsung dari leave_balance
@@ -231,6 +229,7 @@ export function LeaveRequestModal({
     () => users.filter((u: Pegawai) => u.isapprover),
     [users]
   );
+  console.log("cari atasan:", potentialSupervisors)
 
   const potentialAuthorizedOfficers = useMemo(
     () => users.filter((u: Pegawai) => u.isauthorizedofficer),
@@ -271,6 +270,7 @@ export function LeaveRequestModal({
 
         // Format masa kerja dari database jika tersedia
         let formattedMasaKerja = "";
+        console.log(user.masa_kerja)
         if (user.masa_kerja) {
           // Jika masa_kerja adalah string tanggal, konversi ke format yang sesuai
           try {

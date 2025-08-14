@@ -24,7 +24,7 @@ export async function middleware(request: NextRequest) {
 
     // Special handling for /api/users - allow admins and special users (approvers/authorized officers)
     if (pathname.startsWith("/api/users")) {
-      if (user.role !== "admin" && !user.isapprover && !user.isauthorizedofficer) {
+      if (user.role !== "admin" && user.role !== "user" && !user.isapprover && !user.isauthorizedofficer) {
         console.log("API request rejected: not admin/approver/authorized officer")
         return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
       }
