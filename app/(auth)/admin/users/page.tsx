@@ -660,7 +660,7 @@ export default function AdminUsersPage() {
                       <TableHead>Peran</TableHead>
                       <TableHead>Jabatan</TableHead>
                       <TableHead>Satuan Kerja</TableHead>
-                      <TableHead>Tipe Pengguna</TableHead>
+                      {/* <TableHead>Tipe Pengguna</TableHead> */}
                       <TableHead className="relative">
                         <div className="flex items-center gap-1">
                           <span>Sisa Cuti {twoYearsAgo}</span>
@@ -723,7 +723,7 @@ export default function AdminUsersPage() {
                           <TableCell>{user.role === "admin" ? "Administrator" : "Pengguna"}</TableCell>
                           <TableCell>{user.position}</TableCell>
                           <TableCell>{user.workunit}</TableCell>
-                          <TableCell>{user.tipe_pengguna}</TableCell>
+                          {/* <TableCell>{user.tipe_pengguna}</TableCell> */}
                           <TableCell className="text-center">
                             <div className="flex flex-col items-center">
                               <span className="font-medium">{twoYearsAgoRemainingBalance} hari</span>
