@@ -29,7 +29,7 @@ const leaveRequestSchema = z.object({
   used_carry_over_days: z.number().optional(),
   used_current_year_days: z.number().optional(),
   used_n2_year: z.number().optional(),
-  file_lampiran: z.string().optional(),
+  file_lampiran: z.string().default(""),
 });
 
 export async function GET(request: NextRequest) {

@@ -173,9 +173,7 @@ export function MobileSidebar({ isOpen, onOpenChange, isAdmin = false }: MobileS
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent side="left" className="p-0">
-        <SheetTitle>
-          <VisuallyHidden>Menu Navigasi</VisuallyHidden>
-        </SheetTitle>
+        <SheetTitle className="sr-only">Menu Navigasi</SheetTitle>
         <Sidebar isAdmin={isAdmin} />
       </SheetContent>
     </Sheet>

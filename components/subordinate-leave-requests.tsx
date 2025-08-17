@@ -206,7 +206,7 @@ export function SubordinateLeaveRequests() {
 
       {/* Review Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Review Permintaan Cuti</DialogTitle>
             <DialogDescription>Setujui atau tolak permintaan cuti ini.</DialogDescription>

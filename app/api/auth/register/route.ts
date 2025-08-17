@@ -90,18 +90,37 @@ export async function POST(request: NextRequest) {
     // Create dynamic leave balance for current year and previous year
     const currentYear = new Date().getFullYear();
     const previousYear = currentYear - 1;
+    const twoYearsAgo = currentYear - 2;
 
-    // Inisialisasi leave_balance dengan tahun berjalan dan tahun sebelumnya
+    // Inisialisasi leave_balance dengan tahun berjalan, tahun sebelumnya, dan 2 tahun sebelumnya
     const defaultLeaveBalance = {
       [currentYear.toString()]: 12,     // Tahun saat ini (dinamis)
-      [previousYear.toString()]: 12     // Tahun sebelumnya (dinamis)
+      [previousYear.toString()]: 12,    // Tahun sebelumnya (dinamis)
+      [twoYearsAgo.toString()]: 0       // Dua tahun sebelumnya (dinamis)
     };
 
     console.log("[REGISTER] Dynamic leave balance:", {
       currentYear,
       previousYear,
+      twoYearsAgo,
       leave_balance: defaultLeaveBalance
     });
+    
+    // Jika ada leave_balance dari form, gunakan nilai tersebut
+    if (body.leave_balance) {
+      // Pastikan nilai tahun N-2 dari form digunakan jika ada
+      if (body.leave_balance[twoYearsAgo.toString()] !== undefined) {
+        defaultLeaveBalance[twoYearsAgo.toString()] = body.leave_balance[twoYearsAgo.toString()];
+      }
+      // Pastikan nilai tahun N-1 dari form digunakan jika ada
+      if (body.leave_balance[previousYear.toString()] !== undefined) {
+        defaultLeaveBalance[previousYear.toString()] = body.leave_balance[previousYear.toString()];
+      }
+      // Pastikan nilai tahun berjalan dari form digunakan jika ada
+      if (body.leave_balance[currentYear.toString()] !== undefined) {
+        defaultLeaveBalance[currentYear.toString()] = body.leave_balance[currentYear.toString()];
+      }
+    }
 
     // Create database ready object from raw data
     const dbData = {

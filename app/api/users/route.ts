@@ -41,10 +41,9 @@ export async function GET(request: NextRequest) {
     console.log("User isapprover:", payload.isapprover)
     console.log("User isauthorizedofficer:", payload.isauthorizedofficer)
 
-    // Allow admin, approvers, and authorized officers to access users list
-    if (payload.role !== "admin" && !payload.isapprover && !payload.isauthorizedofficer) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
-    }
+    // Allow all authenticated users to access users list
+    // Previously restricted to admin, approvers, and authorized officers
+    // Now allowing all users including those with role="user"
 
     // Fetch all users from database
     console.log("Fetching users from Supabase...")

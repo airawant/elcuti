@@ -90,7 +90,7 @@ export function LeaveRequestModal({
     endDate: "",
     totalDays: 0,
     validationErrors: {
-      duration: null,
+      duration: "",
     },
     workingdays: 0,
     address: "",
@@ -472,7 +472,7 @@ export function LeaveRequestModal({
         // or when changing dates
         updatedData.validationErrors = {
           ...prev.validationErrors,
-          duration: null,
+          duration: "",
         };
       }
 
@@ -772,7 +772,7 @@ export function LeaveRequestModal({
 
       // Validasi format file untuk Cuti Besar dan Cuti Sakit
       if (
-        (formData.leaveType === "Cuti Besar" || formData.leaveType === "Cuti Sakit") &&
+        (formData.leaveType === "Cuti Besar" || formData.leaveType === "Cuti Sakit" || formData.leaveType === "Cuti Melahirkan") &&
         !file.type.includes("pdf")
       ) {
         toast({
@@ -945,7 +945,7 @@ export function LeaveRequestModal({
         authorized_officer_status: "Pending",
         supervisor_viewed: false,
         link_file: fileUrl || null,
-        file_lampiran: fileUrl || null,
+        file_lampiran: (formData.leaveType === "Cuti Sakit" || formData.leaveType === "Cuti Melahirkan" || formData.leaveType === "Cuti Besar") ? (fileUrl || "") : "",
         authorized_officer_viewed: false,
         supervisor_signed: false,
         authorized_officer_signed: false,
@@ -1333,7 +1333,7 @@ export function LeaveRequestModal({
                     <RadioGroupItem value="Cuti Tahunan" id="leave-type-1" />
                     <Label htmlFor="leave-type-1">Cuti Tahunan</Label>
                   </div>
-                  {user?.tipe_pengguna == "PPPK" && (
+                  {user?.tipe_pengguna !== "PPPK" && (
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="Cuti Besar" id="leave-type-2" />
                     <Label htmlFor="leave-type-2">Cuti Besar</Label>
@@ -1387,7 +1387,8 @@ export function LeaveRequestModal({
                           onChange={handleFileUpload}
                           accept={
                             formData.leaveType === "Cuti Besar" ||
-                            formData.leaveType === "Cuti Sakit"
+                            formData.leaveType === "Cuti Sakit" ||
+                            formData.leaveType === "Cuti Melahirkan"
                               ? ".pdf"
                               : ".pdf,.jpg,.jpeg,.png"
                           }
@@ -1395,7 +1396,8 @@ export function LeaveRequestModal({
                       </div>
                       <p className="text-sm text-gray-500 mt-1">
                         {formData.leaveType === "Cuti Besar" ||
-                        formData.leaveType === "Cuti Sakit"
+                        formData.leaveType === "Cuti Sakit" ||
+                        formData.leaveType === "Cuti Melahirkan"
                           ? "Format yang didukung: PDF (Maks. 2MB)"
                           : "Format yang didukung: PDF, JPG, JPEG, PNG (Maks. 2MB)"}
                       </p>

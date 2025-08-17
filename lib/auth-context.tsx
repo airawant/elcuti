@@ -89,7 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const response = await fetch("/api/auth/me")
         const responseText = await response.text()
-        console.log("Raw response from /api/auth/me:", responseText)
+        // console.log("Raw response from /api/auth/me:", responseText)
 
         let userData
         try {
@@ -134,7 +134,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!user) return;
 
       try {
-        console.log("Fetching leave requests...");
+        // console.log("Fetching leave requests...");
         const response = await fetch("/api/leave-requests");
 
         if (!response.ok) {
@@ -142,7 +142,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         const data = await response.json();
-        console.log("Leave requests fetched:", data);
+        // console.log("Leave requests fetched:", data);
 
         if (isMounted && Array.isArray(data)) {
           setLeaveRequests(data);
@@ -174,7 +174,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const response = await fetch("/api/users")
         if (response.ok) {
           const usersData = await response.json()
-          console.log("Users data:", usersData)
+        //   console.log("Users data:", usersData)
           setUsers(usersData)
         }
       } catch (error) {
