@@ -1,55 +1,59 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { Sidebar, MobileSidebar } from "@/components/sidebar"
-import { Header } from "@/components/header"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useAuth } from "@/lib/auth-context"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { BookOpen, HelpCircle } from "lucide-react"
-import Image from "next/image"
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Sidebar, MobileSidebar } from "@/components/sidebar";
+import { Header } from "@/components/header";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth } from "@/lib/auth-context";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BookOpen, HelpCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import Image from "next/image";
 
 type LeaveType = {
-  id: number
-  code: string
-  name: string
-  description: string
-}
+  id: number;
+  code: string;
+  name: string;
+  description: string;
+};
 
 export default function GuidePage() {
-  const [isMobileOpen, setIsMobileOpen] = useState(false)
-  const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([])
-  const { user } = useAuth()
-  const router = useRouter()
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
+  const { user } = useAuth();
+  const router = useRouter();
 
   // Redirect if not logged in
   useEffect(() => {
     if (!user) {
-      router.push("/login")
+      router.push("/login");
     }
-  }, [user, router])
+  }, [user, router]);
 
   // Fetch leave types
   useEffect(() => {
     async function fetchLeaveTypes() {
       try {
-        const response = await fetch("/api/leave-types")
+        const response = await fetch("/api/leave-types");
         if (!response.ok) {
-          throw new Error("Gagal mengambil data jenis cuti")
+          throw new Error("Gagal mengambil data jenis cuti");
         }
-        const data = await response.json()
-        setLeaveTypes(data.data)
+        const data = await response.json();
+        setLeaveTypes(data.data);
       } catch (error) {
-        console.error("Error fetching leave types:", error)
+        console.error("Error fetching leave types:", error);
       }
     }
 
-    fetchLeaveTypes()
-  }, [])
+    fetchLeaveTypes();
+  }, []);
 
   if (!user) {
-    return null
+    return null;
+  }
+  function goToGuide() {
+    window.open("https://drive.google.com/file/d/16az9OTMq_X1Y6onGqc3BrTgDUwZJfRo7/view?usp=sharing", "_blank");
   }
 
   return (
@@ -60,7 +64,11 @@ export default function GuidePage() {
       </div>
 
       {/* Mobile sidebar */}
-      <MobileSidebar isOpen={isMobileOpen} onOpenChange={setIsMobileOpen} isAdmin={user.role === "admin"} />
+      <MobileSidebar
+        isOpen={isMobileOpen}
+        onOpenChange={setIsMobileOpen}
+        isAdmin={user.role === "admin"}
+      />
 
       <div className="flex-1">
         <Header title="Buku Panduan" onMenuClick={() => setIsMobileOpen(true)} />
@@ -98,16 +106,23 @@ export default function GuidePage() {
                 <TabsContent value="overview" className="mt-6 space-y-4">
                   <h3 className="text-lg font-semibold">Sistem Manajemen Cuti Elektronik</h3>
                   <p>
-                    Selamat datang di EL-CUTI KEMENAG KOTA TANJUNGPINANG, sistem manajemen cuti elektronik Anda. Panduan ini akan membantu Anda memahami cara
-                    menggunakan sistem dengan efektif.
+                    Selamat datang di EL-CUTI KEMENAG KOTA TANJUNGPINANG, sistem manajemen cuti
+                    elektronik Anda. Panduan ini akan membantu Anda memahami cara menggunakan
+                    sistem dengan efektif.
                   </p>
                   <h4 className="text-md font-semibold mt-4">Memulai</h4>
                   <ol className="list-decimal pl-5 space-y-2">
-                    <li>Masuk menggunakan kredensial Anda</li>
+                    <li>Pastikan Profil Anda sesuai pada halaman "Profil"</li>
                     <li>Lihat dashboard untuk melihat saldo cuti dan riwayat</li>
                     <li>Ajukan permintaan cuti baru dari halaman "Permintaan Cuti"</li>
                     <li>Lacak status permintaan cuti Anda</li>
                   </ol>
+                  <Button
+                    onClick={() => goToGuide()}
+                    className="bg-green-500 hover:bg-green-600"
+                  >
+                    Dokumentasi Aplikasi
+                  </Button>
                 </TabsContent>
                 <TabsContent value="leave-types" className="mt-6 space-y-4">
                   <h3 className="text-lg font-semibold">Jenis Cuti</h3>
@@ -124,37 +139,50 @@ export default function GuidePage() {
                   <h3 className="text-lg font-semibold">Pertanyaan Umum</h3>
                   <div className="space-y-4">
                     <div>
-                      <h4 className="font-medium">Bagaimana cara mengajukan permintaan cuti?</h4>
+                      <h4 className="font-medium">
+                        Bagaimana cara mengajukan permintaan cuti?
+                      </h4>
                       <p className="text-sm text-gray-600">
-                        Buka halaman "Permintaan Cuti" dan klik "Permintaan Baru". Isi detail yang diperlukan dan
-                        kirimkan.
+                        Buka halaman "Permintaan Cuti" dan klik "Permintaan Baru". Isi detail
+                        yang diperlukan dan kirimkan.
                       </p>
                     </div>
                     <div>
-                      <h4 className="font-medium">Bagaimana cara memeriksa saldo cuti saya?</h4>
+                      <h4 className="font-medium">
+                        Bagaimana cara memeriksa saldo cuti saya?
+                      </h4>
                       <p className="text-sm text-gray-600">
                         Saldo cuti Anda ditampilkan di dashboard untuk setiap tahun.
                       </p>
                     </div>
                     <div>
-                      <h4 className="font-medium">Apa yang terjadi jika permintaan cuti saya ditolak?</h4>
+                      <h4 className="font-medium">
+                        Apa yang terjadi jika permintaan cuti saya ditolak?
+                      </h4>
                       <p className="text-sm text-gray-600">
-                        Anda akan menerima notifikasi, dan status akan diperbarui dalam daftar permintaan cuti Anda. Anda
-                        dapat mengajukan permintaan baru jika diperlukan.
+                        Anda akan menerima notifikasi, dan status akan diperbarui dalam daftar
+                        permintaan cuti Anda. Anda dapat mengajukan permintaan baru jika
+                        diperlukan.
                       </p>
                     </div>
                     <div>
-                      <h4 className="font-medium">Bisakah saya membatalkan permintaan cuti?</h4>
+                      <h4 className="font-medium">
+                        Bisakah saya membatalkan permintaan cuti?
+                      </h4>
                       <p className="text-sm text-gray-600">
-                        Ya, Anda dapat membatalkan permintaan cuti yang masih dalam status menunggu. Permintaan yang sudah disetujui
-                        mungkin memerlukan persetujuan administrator untuk pembatalan.
+                        Ya, Anda dapat membatalkan permintaan cuti yang masih dalam status
+                        menunggu. Permintaan yang sudah disetujui mungkin memerlukan
+                        persetujuan administrator untuk pembatalan.
                       </p>
                     </div>
                     <div>
-                      <h4 className="font-medium">Berapa lama sebelumnya saya harus mengajukan permintaan cuti?</h4>
+                      <h4 className="font-medium">
+                        Berapa lama sebelumnya saya harus mengajukan permintaan cuti?
+                      </h4>
                       <p className="text-sm text-gray-600">
-                        Untuk cuti yang direncanakan, disarankan untuk mengajukan minimal 2 minggu sebelumnya. Cuti darurat dapat
-                        diajukan dengan pemberitahuan lebih singkat.
+                        Untuk cuti yang direncanakan, disarankan untuk mengajukan minimal 2
+                        minggu sebelumnya. Cuti darurat dapat diajukan dengan pemberitahuan
+                        lebih singkat.
                       </p>
                     </div>
                   </div>
@@ -171,7 +199,10 @@ export default function GuidePage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-gray-600">Jika Anda membutuhkan bantuan lebih lanjut, silakan hubungi Kepegawaian Kantor Kementerian Agama Kota Tanjungpinang:</p>
+              <p className="text-sm text-gray-600">
+                Jika Anda membutuhkan bantuan lebih lanjut, silakan hubungi Kepegawaian Kantor
+                Kementerian Agama Kota Tanjungpinang:
+              </p>
               <div className="mt-2">
                 <p className="text-sm">Email: tanjungpinang@kemenag.go.id</p>
                 <p className="text-sm">Telepon: 08 2172 801 123</p>
@@ -181,7 +212,7 @@ export default function GuidePage() {
         </main>
       </div>
     </div>
-  )
+  );
 }
 
 // Move this file to app/(auth)/guide/page.tsx

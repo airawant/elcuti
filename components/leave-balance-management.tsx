@@ -100,7 +100,7 @@ export function LeaveBalanceManagement() {
           </div>
           <div className="flex items-end">
             <Button onClick={handleSetInitialBalance} className="w-full">
-              Tetapkan Untuk Semua Karyawan
+              Tetapkan Untuk Semua Pegawai
             </Button>
           </div>
         </div>

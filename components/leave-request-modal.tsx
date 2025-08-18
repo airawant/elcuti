@@ -1852,7 +1852,7 @@ export function LeaveRequestModal({
                       variant={formData.supervisorSigned ? "default" : "outline"}
                       className="my-2"
                     >
-                      {formData.supervisorSigned ? "TERTANDA" : "Tanda Tangan Di Atas Nama"}
+                      {formData.supervisorSigned ? "TERTANDA" : "Tanda Tangan"}
                     </Button>
                     <p className="font-medium">{formData.supervisorName}</p>
                     <p className="text-sm">NIP. {formData.supervisorNIP || "-"}</p>
@@ -1957,7 +1957,7 @@ export function LeaveRequestModal({
                     >
                       {formData.authorizedOfficerSigned
                         ? "TERTANDA"
-                        : "Tanda Tangan Di Atas Nama"}
+                        : "Tanda Tangan"}
                     </Button>
                     <p className="font-medium">
                       {formData.authorizedOfficerName || "Pilih Pejabat Berwenang"}

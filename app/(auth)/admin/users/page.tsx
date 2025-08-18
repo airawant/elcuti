@@ -1,15 +1,22 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { Sheet, SheetContent } from "@/components/ui/sheet"
-import { Sidebar } from "@/components/sidebar"
-import { Header } from "@/components/header"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useAuth } from "@/lib/auth-context"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { useToast } from "@/hooks/use-toast"
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sidebar } from "@/components/sidebar";
+import { Header } from "@/components/header";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth } from "@/lib/auth-context";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -18,16 +25,34 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import * as z from "zod"
-import { Edit, Trash, Download, HelpCircle } from "lucide-react"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Edit, Trash, Download, HelpCircle } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const userFormSchema = z.object({
   name: z.string().min(2, {
@@ -56,36 +81,38 @@ const userFormSchema = z.object({
   tipe_pengguna: z.enum(["PNS", "PPPK"]).default("PNS"),
   isapprover: z.boolean().default(false),
   isauthorizedofficer: z.boolean().default(false),
-  password: z.union([
-    z.string().min(6, {
-      message: "Password must be at least 6 characters",
-    }),
-    z.string().length(0) // Mengizinkan string kosong
-  ]).optional(),
+  password: z
+    .union([
+      z.string().min(6, {
+        message: "Password must be at least 6 characters",
+      }),
+      z.string().length(0), // Mengizinkan string kosong
+    ])
+    .optional(),
   leave_balance: z.record(z.string(), z.number()).optional(),
-})
+});
 
 export default function AdminUsersPage() {
-  const [isMobileOpen, setIsMobileOpen] = useState(false)
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [selectedUser, setSelectedUser] = useState<number | null>(null)
-  const { user, users, leaveRequests, addUser, updateUser, deleteUser } = useAuth()
-  const router = useRouter()
-  const { toast } = useToast()
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<number | null>(null);
+  const { user, users, leaveRequests, addUser, updateUser, deleteUser } = useAuth();
+  const router = useRouter();
+  const { toast } = useToast();
 
   // Get current year and previous year for leave balance
-  const currentYear = new Date().getFullYear().toString()
-  const previousYear = (new Date().getFullYear() - 1).toString()
-  const twoYearsAgo = (new Date().getFullYear() - 2).toString()
+  const currentYear = new Date().getFullYear().toString();
+  const previousYear = (new Date().getFullYear() - 1).toString();
+  const twoYearsAgo = (new Date().getFullYear() - 2).toString();
 
   // Fungsi untuk menghitung saldo cuti yang tersisa dengan benar
   const calculateRemainingLeaveBalance = (userId: number, year: string) => {
     if (!users || !leaveRequests) return 0;
 
     // Dapatkan user
-    const targetUser = users.find(u => u.id === userId);
+    const targetUser = users.find((u) => u.id === userId);
     if (!targetUser || !targetUser.leave_balance) return 0;
 
     // Sisa saldo sekarang langsung dari leave_balance
@@ -114,7 +141,7 @@ export default function AdminUsersPage() {
         [currentYear]: 12,
       },
     },
-  })
+  });
 
   const editForm = useForm<z.infer<typeof userFormSchema>>({
     resolver: zodResolver(userFormSchema),
@@ -138,21 +165,21 @@ export default function AdminUsersPage() {
         [currentYear]: 12,
       },
     },
-  })
+  });
 
   // Redirect if not logged in or not admin
   useEffect(() => {
     if (!user) {
-      router.push("/login")
+      router.push("/login");
     } else if (user.role !== "admin") {
-      router.push("/dashboard")
+      router.push("/dashboard");
     }
-  }, [user, router])
+  }, [user, router]);
 
   // Set edit form values when a user is selected
   useEffect(() => {
     if (selectedUser) {
-      const userToEdit = users.find((u) => u.id === selectedUser)
+      const userToEdit = users.find((u) => u.id === selectedUser);
       if (userToEdit) {
         const defaultLeaveBalance = {
           [twoYearsAgo]: 0,
@@ -175,18 +202,18 @@ export default function AdminUsersPage() {
           isauthorizedofficer: userToEdit.isauthorizedofficer || false,
           password: "", // Password is optional for edit
           leave_balance: userToEdit.leave_balance || defaultLeaveBalance,
-        })
+        });
       }
     }
-  }, [selectedUser, users, editForm, currentYear, previousYear, twoYearsAgo])
+  }, [selectedUser, users, editForm, currentYear, previousYear, twoYearsAgo]);
 
   if (!user || user.role !== "admin") {
-    return null
+    return null;
   }
 
   const handleAddUser = (values: z.infer<typeof userFormSchema>) => {
     // Use snake_case for API request
-    console.log("Original values for add user:", values)
+    console.log("Original values for add user:", values);
 
     const apiValues = {
       ...values,
@@ -194,29 +221,29 @@ export default function AdminUsersPage() {
       isapprover: values.isapprover,
       isauthorizedofficer: values.isauthorizedofficer,
       masa_kerja: values.masa_kerja || undefined,
-    }
+    };
 
-    console.log("Transformed values for API:", apiValues)
+    console.log("Transformed values for API:", apiValues);
 
-    addUser(apiValues)
+    addUser(apiValues);
     toast({
       title: "Pengguna ditambahkan",
       description: "Pengguna baru berhasil ditambahkan",
-    })
-    setIsAddDialogOpen(false)
-    addForm.reset()
-  }
+    });
+    setIsAddDialogOpen(false);
+    addForm.reset();
+  };
 
   const handleEditUser = (values: z.infer<typeof userFormSchema>) => {
     if (selectedUser) {
       // If password is empty, remove it from values to keep existing password
-      const updateValues = { ...values }
+      const updateValues = { ...values };
       if (!updateValues.password || updateValues.password === "") {
-        delete updateValues.password
+        delete updateValues.password;
       }
 
       // Rename fields to match the API expectations
-      console.log("Original values for update:", updateValues)
+      console.log("Original values for update:", updateValues);
 
       // Use snake_case for API request
       const apiValues = {
@@ -225,39 +252,39 @@ export default function AdminUsersPage() {
         isapprover: updateValues.isapprover,
         isauthorizedofficer: updateValues.isauthorizedofficer,
         masa_kerja: updateValues.masa_kerja || undefined,
-      }
+      };
 
-      console.log("Transformed values for API:", apiValues)
+      console.log("Transformed values for API:", apiValues);
 
-      updateUser(selectedUser, apiValues)
+      updateUser(selectedUser, apiValues);
       toast({
         title: "Pengguna diperbarui",
         description: "Data pengguna berhasil diperbarui",
-      })
-      setIsEditDialogOpen(false)
+      });
+      setIsEditDialogOpen(false);
     }
-  }
+  };
 
   const handleDeleteUser = () => {
     if (selectedUser) {
-      deleteUser(selectedUser)
+      deleteUser(selectedUser);
       toast({
         title: "User deleted",
         description: "The user has been deleted successfully",
-      })
-      setIsDeleteDialogOpen(false)
+      });
+      setIsDeleteDialogOpen(false);
     }
-  }
+  };
 
   const openEditDialog = (userId: number) => {
-    setSelectedUser(userId)
-    setIsEditDialogOpen(true)
-  }
+    setSelectedUser(userId);
+    setIsEditDialogOpen(true);
+  };
 
   const openDeleteDialog = (userId: number) => {
-    setSelectedUser(userId)
-    setIsDeleteDialogOpen(true)
-  }
+    setSelectedUser(userId);
+    setIsDeleteDialogOpen(true);
+  };
 
   // Fungsi untuk mengunduh data pengguna dalam format CSV
   const downloadUsersCSV = () => {
@@ -276,15 +303,21 @@ export default function AdminUsersPage() {
       `Sisa Saldo ${previousYear}`,
       `Sisa Saldo ${currentYear}`,
       "Penyetuju",
-      "Pejabat Berwenang"
+      "Pejabat Berwenang",
     ];
 
     // Format data pengguna untuk CSV
-    const csvData = users.map(user => {
+    const csvData = users.map((user) => {
       // Ambil sisa saldo langsung dari leave_balance
-      const twoYearsAgoRemainingBalance = user.leave_balance ? (user.leave_balance[twoYearsAgo] || 0) : 0;
-      const previousYearRemainingBalance = user.leave_balance ? (user.leave_balance[previousYear] || 0) : 0;
-      const currentYearRemainingBalance = user.leave_balance ? (user.leave_balance[currentYear] || 0) : 0;
+      const twoYearsAgoRemainingBalance = user.leave_balance
+        ? user.leave_balance[twoYearsAgo] || 0
+        : 0;
+      const previousYearRemainingBalance = user.leave_balance
+        ? user.leave_balance[previousYear] || 0
+        : 0;
+      const currentYearRemainingBalance = user.leave_balance
+        ? user.leave_balance[currentYear] || 0
+        : 0;
 
       return [
         user.name || "",
@@ -300,19 +333,23 @@ export default function AdminUsersPage() {
         previousYearRemainingBalance,
         currentYearRemainingBalance,
         user.isapprover ? "Ya" : "Tidak",
-        user.isauthorizedofficer ? "Ya" : "Tidak"
+        user.isauthorizedofficer ? "Ya" : "Tidak",
       ];
     });
 
     // Gabungkan header dan data
     const csvContent = [
       headers.join(","),
-      ...csvData.map(row => row.map(cell =>
-        // Jika sel berisi koma, apit dengan tanda kutip
-        typeof cell === 'string' && cell.includes(',')
-          ? `"${cell.replace(/"/g, '""')}"`
-          : cell
-      ).join(","))
+      ...csvData.map((row) =>
+        row
+          .map((cell) =>
+            // Jika sel berisi koma, apit dengan tanda kutip
+            typeof cell === "string" && cell.includes(",")
+              ? `"${cell.replace(/"/g, '""')}"`
+              : cell
+          )
+          .join(",")
+      ),
     ].join("\n");
 
     // Buat file CSV dan unduh
@@ -322,7 +359,10 @@ export default function AdminUsersPage() {
 
     // Set properti link untuk unduhan
     link.setAttribute("href", url);
-    link.setAttribute("download", `daftar_pengguna_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute(
+      "download",
+      `daftar_pengguna_${new Date().toISOString().split("T")[0]}.csv`
+    );
     link.style.visibility = "hidden";
 
     // Tambahkan ke dokumen, klik, dan hapus
@@ -358,7 +398,9 @@ export default function AdminUsersPage() {
               <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-6">
                 <DialogHeader className="sticky top-0 bg-white z-10 pb-4 border-b">
                   <DialogTitle>Tambah Pengguna Baru</DialogTitle>
-                  <DialogDescription>Lengkapi formulir berikut untuk menambahkan pengguna baru.</DialogDescription>
+                  <DialogDescription>
+                    Lengkapi formulir berikut untuk menambahkan pengguna baru.
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="mt-6">
                   <Form {...addForm}>
@@ -399,7 +441,10 @@ export default function AdminUsersPage() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Peran</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <Select
+                                onValueChange={field.onChange}
+                                defaultValue={field.value}
+                              >
                                 <FormControl>
                                   <SelectTrigger>
                                     <SelectValue placeholder="Pilih peran" />
@@ -479,7 +524,11 @@ export default function AdminUsersPage() {
                             <FormItem>
                               <FormLabel>Password</FormLabel>
                               <FormControl>
-                                <Input type="password" placeholder="Masukkan password" {...field} />
+                                <Input
+                                  type="password"
+                                  placeholder="Masukkan password"
+                                  {...field}
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -495,7 +544,11 @@ export default function AdminUsersPage() {
                             <FormItem>
                               <FormLabel>Masa Kerja</FormLabel>
                               <FormControl>
-                                <Input type="date" placeholder="Pilih tanggal mulai kerja" {...field} />
+                                <Input
+                                  type="date"
+                                  placeholder="Pilih tanggal mulai kerja"
+                                  {...field}
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -507,7 +560,10 @@ export default function AdminUsersPage() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Tipe Pengguna</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <Select
+                                onValueChange={field.onChange}
+                                defaultValue={field.value}
+                              >
                                 <FormControl>
                                   <SelectTrigger>
                                     <SelectValue placeholder="Pilih tipe pengguna" />
@@ -545,11 +601,16 @@ export default function AdminUsersPage() {
                           render={({ field }) => (
                             <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                               <FormControl>
-                                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                <Checkbox
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
                               </FormControl>
                               <div className="space-y-1 leading-none">
                                 <FormLabel>Penyetuju</FormLabel>
-                                <p className="text-sm text-muted-foreground">Dapat menyetujui permintaan cuti</p>
+                                <p className="text-sm text-muted-foreground">
+                                  Dapat menyetujui permintaan cuti
+                                </p>
                               </div>
                             </FormItem>
                           )}
@@ -560,11 +621,16 @@ export default function AdminUsersPage() {
                           render={({ field }) => (
                             <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                               <FormControl>
-                                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                <Checkbox
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
                               </FormControl>
                               <div className="space-y-1 leading-none">
                                 <FormLabel>Pejabat Berwenang</FormLabel>
-                                <p className="text-sm text-muted-foreground">Memiliki wewenang persetujuan akhir</p>
+                                <p className="text-sm text-muted-foreground">
+                                  Memiliki wewenang persetujuan akhir
+                                </p>
                               </div>
                             </FormItem>
                           )}
@@ -586,7 +652,9 @@ export default function AdminUsersPage() {
                                       type="number"
                                       min="0"
                                       value={field.value ?? 0}
-                                      onChange={(e) => field.onChange(Number.parseInt(e.target.value) || 0)}
+                                      onChange={(e) =>
+                                        field.onChange(Number.parseInt(e.target.value) || 0)
+                                      }
                                     />
                                   </FormControl>
                                   <FormMessage />
@@ -604,7 +672,9 @@ export default function AdminUsersPage() {
                                       type="number"
                                       min="0"
                                       value={field.value ?? 0}
-                                      onChange={(e) => field.onChange(Number.parseInt(e.target.value) || 0)}
+                                      onChange={(e) =>
+                                        field.onChange(Number.parseInt(e.target.value) || 0)
+                                      }
                                     />
                                   </FormControl>
                                   <FormMessage />
@@ -622,7 +692,9 @@ export default function AdminUsersPage() {
                                       type="number"
                                       min="0"
                                       value={field.value ?? 0}
-                                      onChange={(e) => field.onChange(Number.parseInt(e.target.value) || 0)}
+                                      onChange={(e) =>
+                                        field.onChange(Number.parseInt(e.target.value) || 0)
+                                      }
                                     />
                                   </FormControl>
                                   <FormMessage />
@@ -645,7 +717,11 @@ export default function AdminUsersPage() {
           <Card>
             <CardHeader className="flex flex-row justify-between items-center">
               <CardTitle>User List</CardTitle>
-              <Button variant="outline" onClick={downloadUsersCSV} className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={downloadUsersCSV}
+                className="flex items-center gap-2"
+              >
                 <Download className="h-4 w-4" />
                 <span>Unduh CSV</span>
               </Button>
@@ -655,8 +731,12 @@ export default function AdminUsersPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Nama</TableHead>
-                      <TableHead>NIP</TableHead>
+                      <TableHead>
+                        <div className="flex flex-col items-start">
+                          <span>Nama</span>
+                          <span className="text-sm text-muted-foreground">NIP</span>
+                        </div>
+                      </TableHead>
                       <TableHead>Peran</TableHead>
                       <TableHead>Jabatan</TableHead>
                       <TableHead>Satuan Kerja</TableHead>
@@ -670,7 +750,10 @@ export default function AdminUsersPage() {
                                 <HelpCircle className="h-4 w-4 text-muted-foreground" />
                               </TooltipTrigger>
                               <TooltipContent>
-                                <p className="max-w-xs">Sisa saldo cuti setelah dikurangi cuti yang sudah diambil pada tahun {twoYearsAgo}</p>
+                                <p className="max-w-xs">
+                                  Sisa saldo cuti setelah dikurangi cuti yang sudah diambil
+                                  pada tahun {twoYearsAgo}
+                                </p>
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
@@ -685,7 +768,10 @@ export default function AdminUsersPage() {
                                 <HelpCircle className="h-4 w-4 text-muted-foreground" />
                               </TooltipTrigger>
                               <TooltipContent>
-                                <p className="max-w-xs">Sisa saldo cuti setelah dikurangi cuti yang sudah diambil pada tahun {previousYear}</p>
+                                <p className="max-w-xs">
+                                  Sisa saldo cuti setelah dikurangi cuti yang sudah diambil
+                                  pada tahun {previousYear}
+                                </p>
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
@@ -700,7 +786,10 @@ export default function AdminUsersPage() {
                                 <HelpCircle className="h-4 w-4 text-muted-foreground" />
                               </TooltipTrigger>
                               <TooltipContent>
-                                <p className="max-w-xs">Sisa saldo cuti setelah dikurangi cuti yang sudah diambil pada tahun {currentYear}</p>
+                                <p className="max-w-xs">
+                                  Sisa saldo cuti setelah dikurangi cuti yang sudah diambil
+                                  pada tahun {currentYear}
+                                </p>
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
@@ -712,31 +801,49 @@ export default function AdminUsersPage() {
                   <TableBody>
                     {users.map((user) => {
                       // Ambil sisa saldo cuti langsung dari leave_balance
-                      const twoYearsAgoRemainingBalance = user.leave_balance ? (user.leave_balance[twoYearsAgo] || 0) : 0;
-                      const previousYearRemainingBalance = user.leave_balance ? (user.leave_balance[previousYear] || 0) : 0;
-                      const currentYearRemainingBalance = user.leave_balance ? (user.leave_balance[currentYear] || 0) : 0;
+                      const twoYearsAgoRemainingBalance = user.leave_balance
+                        ? user.leave_balance[twoYearsAgo] || 0
+                        : 0;
+                      const previousYearRemainingBalance = user.leave_balance
+                        ? user.leave_balance[previousYear] || 0
+                        : 0;
+                      const currentYearRemainingBalance = user.leave_balance
+                        ? user.leave_balance[currentYear] || 0
+                        : 0;
 
                       return (
                         <TableRow key={user.id}>
-                          <TableCell>{user.name}</TableCell>
-                          <TableCell>{user.nip}</TableCell>
-                          <TableCell>{user.role === "admin" ? "Administrator" : "Pengguna"}</TableCell>
+                          <TableCell>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{user.name}</span>
+                              <span className="text-sm text-muted-foreground">{user.nip}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {user.role === "admin" ? "Administrator" : "Pengguna"}
+                          </TableCell>
                           <TableCell>{user.position}</TableCell>
                           <TableCell>{user.workunit}</TableCell>
                           {/* <TableCell>{user.tipe_pengguna}</TableCell> */}
                           <TableCell className="text-center">
                             <div className="flex flex-col items-center">
-                              <span className="font-medium">{twoYearsAgoRemainingBalance} hari</span>
+                              <span className="font-medium">
+                                {twoYearsAgoRemainingBalance} hari
+                              </span>
                             </div>
                           </TableCell>
                           <TableCell className="text-center">
                             <div className="flex flex-col items-center">
-                              <span className="font-medium">{previousYearRemainingBalance} hari</span>
+                              <span className="font-medium">
+                                {previousYearRemainingBalance} hari
+                              </span>
                             </div>
                           </TableCell>
                           <TableCell className="text-center">
                             <div className="flex flex-col items-center">
-                              <span className="font-medium">{currentYearRemainingBalance} hari</span>
+                              <span className="font-medium">
+                                {currentYearRemainingBalance} hari
+                              </span>
                             </div>
                           </TableCell>
                           <TableCell>
@@ -913,7 +1020,11 @@ export default function AdminUsersPage() {
                       <FormItem>
                         <FormLabel>Masa Kerja</FormLabel>
                         <FormControl>
-                          <Input type="date" placeholder="Pilih tanggal mulai kerja" {...field} />
+                          <Input
+                            type="date"
+                            placeholder="Pilih tanggal mulai kerja"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -967,7 +1078,9 @@ export default function AdminUsersPage() {
                         </FormControl>
                         <div className="space-y-1 leading-none">
                           <FormLabel>Penyetuju</FormLabel>
-                          <p className="text-sm text-muted-foreground">Dapat menyetujui permintaan cuti</p>
+                          <p className="text-sm text-muted-foreground">
+                            Dapat menyetujui permintaan cuti
+                          </p>
                         </div>
                       </FormItem>
                     )}
@@ -982,7 +1095,9 @@ export default function AdminUsersPage() {
                         </FormControl>
                         <div className="space-y-1 leading-none">
                           <FormLabel>Pejabat Berwenang</FormLabel>
-                          <p className="text-sm text-muted-foreground">Memiliki wewenang persetujuan akhir</p>
+                          <p className="text-sm text-muted-foreground">
+                            Memiliki wewenang persetujuan akhir
+                          </p>
                         </div>
                       </FormItem>
                     )}
@@ -1004,7 +1119,9 @@ export default function AdminUsersPage() {
                                 type="number"
                                 min="0"
                                 value={field.value ?? 0}
-                                onChange={(e) => field.onChange(Number.parseInt(e.target.value) || 0)}
+                                onChange={(e) =>
+                                  field.onChange(Number.parseInt(e.target.value) || 0)
+                                }
                               />
                             </FormControl>
                             <FormMessage />
@@ -1022,7 +1139,9 @@ export default function AdminUsersPage() {
                                 type="number"
                                 min="0"
                                 value={field.value ?? 0}
-                                onChange={(e) => field.onChange(Number.parseInt(e.target.value) || 0)}
+                                onChange={(e) =>
+                                  field.onChange(Number.parseInt(e.target.value) || 0)
+                                }
                               />
                             </FormControl>
                             <FormMessage />
@@ -1040,7 +1159,9 @@ export default function AdminUsersPage() {
                                 type="number"
                                 min="0"
                                 value={field.value ?? 0}
-                                onChange={(e) => field.onChange(Number.parseInt(e.target.value) || 0)}
+                                onChange={(e) =>
+                                  field.onChange(Number.parseInt(e.target.value) || 0)
+                                }
                               />
                             </FormControl>
                             <FormMessage />
@@ -1065,7 +1186,8 @@ export default function AdminUsersPage() {
           <DialogHeader>
             <DialogTitle>Hapus Pengguna</DialogTitle>
             <DialogDescription>
-              Apakah Anda yakin ingin menghapus pengguna ini? Tindakan ini tidak dapat dibatalkan.
+              Apakah Anda yakin ingin menghapus pengguna ini? Tindakan ini tidak dapat
+              dibatalkan.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -1079,5 +1201,5 @@ export default function AdminUsersPage() {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }
