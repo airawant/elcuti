@@ -69,14 +69,14 @@ export default function LoginPage() {
           <div className="mx-auto relative w-24 h-24">
             <Image
               src="/logo.png"
-              alt="Logo EL-CUTI"
+              alt="Logo SIM C"
               fill
               className="object-contain"
               priority
             />
           </div>
-          <CardTitle className="text-2xl font-bold text-center text-primary">EL-CUTI KEMENAG KOTA TANJUNGPINANG</CardTitle>
-          <CardDescription className="text-center">ELEKTRONIK CUTI KANTOR KEMENTERIAN AGAMA KOTA TANJUNGPINANG</CardDescription>
+          <CardTitle className="text-2xl font-bold text-center text-primary">SIM C KEMENAG KOTA TANJUNGPINANG</CardTitle>
+          <CardDescription className="text-center">SISTEM INFORMASI MANAJEMEN CUTI KANTOR KEMENTERIAN AGAMA KOTA TANJUNGPINANG</CardDescription>
         </CardHeader>
         <CardContent>
           {error && (

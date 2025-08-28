@@ -80,7 +80,7 @@ export default function GuidePage() {
                 <div className="relative w-16 h-16">
                   <Image
                     src="/logo.png"
-                    alt="Logo EL-CUTI"
+                    alt="Logo SIM C"
                     fill
                     className="object-contain"
                     priority
@@ -88,10 +88,10 @@ export default function GuidePage() {
                 </div>
                 <div>
                   <CardTitle className="text-xl font-bold text-primary">
-                    EL-CUTI KEMENAG KOTA TANJUNGPINANG
+                    SIM C KEMENAG KOTA TANJUNGPINANG
                   </CardTitle>
                   <p className="text-sm text-gray-600">
-                    ELEKTRONIK CUTI KANTOR KEMENAG KOTA TANJUNGPINANG
+                    SISTEM INFORMASI MANAJEMEN CUTI KANTOR KEMENAG KOTA TANJUNGPINANG
                   </p>
                 </div>
               </div>
@@ -106,7 +106,7 @@ export default function GuidePage() {
                 <TabsContent value="overview" className="mt-6 space-y-4">
                   <h3 className="text-lg font-semibold">Sistem Manajemen Cuti Elektronik</h3>
                   <p>
-                    Selamat datang di EL-CUTI KEMENAG KOTA TANJUNGPINANG, sistem manajemen cuti
+                    Selamat datang di SIM C KEMENAG KOTA TANJUNGPINANG, sistem manajemen cuti
                     elektronik Anda. Panduan ini akan membantu Anda memahami cara menggunakan
                     sistem dengan efektif.
                   </p>

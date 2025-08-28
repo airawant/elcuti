@@ -116,14 +116,14 @@ export function Sidebar({ className, isAdmin = false }: SidebarProps) {
             <div className="relative w-12 h-12">
               <Image
                 src="/logo.png"
-                alt="Logo EL-CUTI"
+                alt="Logo SIM C"
                 fill
                 className="object-contain"
                 priority
               />
             </div>
             <div>
-              <h2 className="text-lg font-semibold tracking-tight text-primary">EL-CUTI</h2>
+              <h2 className="text-lg font-semibold tracking-tight text-primary">SIM C</h2>
               <p className="text-[10px] text-muted-foreground leading-tight">KEMENAG KOTA TANJUNGPINANG</p>
             </div>
           </div>

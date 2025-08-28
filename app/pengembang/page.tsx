@@ -1,8 +1,8 @@
 import Image from "next/image";
 import { Linkedin, Mail } from "lucide-react";
 export const metadata = {
-  title: "Tim Programmer | ElCuti Kemenag",
-  description: "Profil programmer dan developer di El-Cuti Kementerian Agama",
+  title: "Tim Programmer | SIM C Kemenag",
+  description: "Profil programmer dan developer di SIM C Kementerian Agama",
 };
 
 export default function ProgrammerPage() {

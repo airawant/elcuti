@@ -357,7 +357,7 @@ export default function ProfilePage() {
                       </Badge>
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">Pejabat yang Berwenang</p>
+                      <p className="text-sm text-muted-foreground">Pejabat Pembina Kepegawaian</p>
                       <Badge variant={user.isauthorizedofficer ? "default" : "outline"} className="mt-1">
                         {user.isauthorizedofficer ? "Ya" : "Tidak"}
                       </Badge>

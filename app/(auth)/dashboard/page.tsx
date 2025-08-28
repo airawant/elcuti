@@ -149,7 +149,7 @@ export default function DashboardPage() {
       </Sheet>
 
       <div className="flex-1">
-        <Header title="ELCUTI - Elektronik Cuti" onMenuClick={() => setIsMobileOpen(true)} />
+        <Header title="SIM C - Sistem Informasi Manajemen Cuti" onMenuClick={() => setIsMobileOpen(true)} />
 
         <main className="p-4 md:p-6 space-y-6">
           {/* Show notification for users with pending requests to approve */}

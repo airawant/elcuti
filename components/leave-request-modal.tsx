@@ -90,7 +90,7 @@ export function LeaveRequestModal({
     endDate: "",
     totalDays: 0,
     validationErrors: {
-      duration: "",
+      duration: null as string | null,
     },
     workingdays: 0,
     address: "",
@@ -102,7 +102,7 @@ export function LeaveRequestModal({
     supervisorId: null as number | null,
     supervisorName: "",
     supervisorPosition: "",
-    supervisorNIP: "",
+    supervisorNIP: null as number | null,
     supervisorSigned: false,
     supervisorSignatureDate: "",
 
@@ -110,7 +110,7 @@ export function LeaveRequestModal({
     authorizedOfficerId: null as number | null,
     authorizedOfficerName: "",
     authorizedOfficerPosition: "",
-    authorizedOfficerNIP: "",
+    authorizedOfficerNIP: null as number | null,
     authorizedOfficerSigned: false,
     authorizedOfficerSignatureDate: "",
 
@@ -157,8 +157,9 @@ export function LeaveRequestModal({
           remainingBalance: 12,
         };
 
-      // Langsung akses data user.leave_balance
-      if (!user || !user.leave_balance) {
+      // Dapatkan user
+      const targetUser = users.find((u) => u.id === userId);
+      if (!targetUser || !targetUser.leave_balance) {
         return {
           initialBalance: 12,
           carryOverBalance: 0,
@@ -174,20 +175,20 @@ export function LeaveRequestModal({
       const previousYear = currentYear - 1;
       const twoYearsAgo = currentYear - 2;
 
-      // Ambil saldo dari leave_balance
-      const currentYearBalance = user.leave_balance[currentYear.toString()] || 0;
-      const previousYearBalance = user.leave_balance[previousYear.toString()] || 0;
-      const twoYearsAgoBalance = user.leave_balance[twoYearsAgo.toString()] || 0;
+      // Ambil saldo ASLI dari leave_balance (nilai yang tersedia, bukan sisa)
+      const availableCurrentYearBalance = targetUser.leave_balance[currentYear.toString()] || 0;
+      const availablePreviousYearBalance = targetUser.leave_balance[previousYear.toString()] || 0;
+      const availableTwoYearsAgoBalance = targetUser.leave_balance[twoYearsAgo.toString()] || 0;
 
-      // Penggunaan cuti tetap dihitung dari leaveRequests
-      const usedLeave = leaveRequests
+      // Hitung penggunaan cuti dari leaveRequests yang sudah disetujui
+      const usedCurrentYear = leaveRequests
         .filter(
           (req) =>
             req.user_id === userId &&
             req.status === "Approved" &&
-            String(new Date(req.start_date).getFullYear()) === currentYear.toString()
+            req.leave_year === currentYear
         )
-        .reduce((total, req) => total + (req.workingdays || 0), 0);
+        .reduce((total, req) => total + (req.used_current_year_days || 0), 0);
 
       const usedCarryOver = leaveRequests
         .filter(
@@ -198,24 +199,28 @@ export function LeaveRequestModal({
         )
         .reduce((total, req) => total + (req.used_carry_over_days || 0), 0);
 
-      const usedCurrentYear = leaveRequests
+      const usedTwoYearsAgo = leaveRequests
         .filter(
           (req) =>
             req.user_id === userId &&
             req.status === "Approved" &&
             req.leave_year === currentYear
         )
-        .reduce((total, req) => total + (req.used_current_year_days || 0), 0);
+        .reduce((total, req) => total + (req.used_n2_year || 0), 0);
 
-      const remainingCarryOver = previousYearBalance; // Gunakan nilai langsung dari leave_balance
-      const remainingTwoYearsAgo = twoYearsAgoBalance; // Gunakan nilai langsung dari leave_balance
-      const remainingCurrentYear = currentYearBalance; // Gunakan nilai langsung dari leave_balance
-      const remainingTotal = remainingCarryOver + remainingTwoYearsAgo + remainingCurrentYear;
+      // Hitung saldo yang tersisa (setelah dikurangi penggunaan)
+      const remainingCurrentYear = Math.max(0, availableCurrentYearBalance - usedCurrentYear);
+      const remainingCarryOver = Math.max(0, availablePreviousYearBalance - usedCarryOver);
+      const remainingTwoYearsAgo = Math.max(0, availableTwoYearsAgoBalance - usedTwoYearsAgo);
+      const remainingTotal = remainingCurrentYear + remainingCarryOver + remainingTwoYearsAgo;
 
       return {
-        initialBalance: currentYearBalance,
-        carryOverBalance: previousYearBalance,
-        twoYearsAgoBalance: twoYearsAgoBalance,
+        // Saldo tersedia (nilai asli dari database)
+        initialBalance: availableCurrentYearBalance,
+        carryOverBalance: availablePreviousYearBalance,
+        twoYearsAgoBalance: availableTwoYearsAgoBalance,
+
+        // Saldo yang tersisa (setelah dikurangi penggunaan)
         remainingCarryOverBalance: remainingCarryOver,
         remainingTwoYearsAgoBalance: remainingTwoYearsAgo,
         remainingCurrentYearBalance: remainingCurrentYear,
@@ -229,7 +234,6 @@ export function LeaveRequestModal({
     () => users.filter((u: Pegawai) => u.isapprover),
     [users]
   );
-  console.log("cari atasan:", potentialSupervisors)
 
   const potentialAuthorizedOfficers = useMemo(
     () => users.filter((u: Pegawai) => u.isauthorizedofficer),
@@ -270,7 +274,6 @@ export function LeaveRequestModal({
 
         // Format masa kerja dari database jika tersedia
         let formattedMasaKerja = "";
-        console.log(user.masa_kerja)
         if (user.masa_kerja) {
           // Jika masa_kerja adalah string tanggal, konversi ke format yang sesuai
           try {
@@ -472,7 +475,7 @@ export function LeaveRequestModal({
         // or when changing dates
         updatedData.validationErrors = {
           ...prev.validationErrors,
-          duration: "",
+          duration: null,
         };
       }
 
@@ -772,7 +775,7 @@ export function LeaveRequestModal({
 
       // Validasi format file untuk Cuti Besar dan Cuti Sakit
       if (
-        (formData.leaveType === "Cuti Besar" || formData.leaveType === "Cuti Sakit" || formData.leaveType === "Cuti Melahirkan") &&
+        (formData.leaveType === "Cuti Besar" || formData.leaveType === "Cuti Sakit") &&
         !file.type.includes("pdf")
       ) {
         toast({
@@ -945,7 +948,7 @@ export function LeaveRequestModal({
         authorized_officer_status: "Pending",
         supervisor_viewed: false,
         link_file: fileUrl || null,
-        file_lampiran: (formData.leaveType === "Cuti Sakit" || formData.leaveType === "Cuti Melahirkan" || formData.leaveType === "Cuti Besar") ? (fileUrl || "") : "",
+        file_lampiran: fileUrl || null,
         authorized_officer_viewed: false,
         supervisor_signed: false,
         authorized_officer_signed: false,
@@ -1333,7 +1336,7 @@ export function LeaveRequestModal({
                     <RadioGroupItem value="Cuti Tahunan" id="leave-type-1" />
                     <Label htmlFor="leave-type-1">Cuti Tahunan</Label>
                   </div>
-                  {user?.tipe_pengguna !== "PPPK" && (
+                  {user?.tipe_pengguna == "PPPK" && (
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="Cuti Besar" id="leave-type-2" />
                     <Label htmlFor="leave-type-2">Cuti Besar</Label>
@@ -1387,8 +1390,7 @@ export function LeaveRequestModal({
                           onChange={handleFileUpload}
                           accept={
                             formData.leaveType === "Cuti Besar" ||
-                            formData.leaveType === "Cuti Sakit" ||
-                            formData.leaveType === "Cuti Melahirkan"
+                            formData.leaveType === "Cuti Sakit"
                               ? ".pdf"
                               : ".pdf,.jpg,.jpeg,.png"
                           }
@@ -1396,8 +1398,7 @@ export function LeaveRequestModal({
                       </div>
                       <p className="text-sm text-gray-500 mt-1">
                         {formData.leaveType === "Cuti Besar" ||
-                        formData.leaveType === "Cuti Sakit" ||
-                        formData.leaveType === "Cuti Melahirkan"
+                        formData.leaveType === "Cuti Sakit"
                           ? "Format yang didukung: PDF (Maks. 2MB)"
                           : "Format yang didukung: PDF, JPG, JPEG, PNG (Maks. 2MB)"}
                       </p>
@@ -1542,7 +1543,7 @@ export function LeaveRequestModal({
                           onClick={() => handleSelectedLeaveBalanceChange("twoYearsAgo")}
                           disabled={remainingTwoYearsAgoBalance <= 0}
                         >
-                          Saldo N-2 ({remainingTwoYearsAgoBalance} hari)
+                          Saldo N-2 ({twoYearsAgoBalance} hari) - Tersisa: {remainingTwoYearsAgoBalance} hari
                         </Button>
                         <Button
                           type="button"
@@ -1555,7 +1556,7 @@ export function LeaveRequestModal({
                           onClick={() => handleSelectedLeaveBalanceChange("carryOver")}
                           disabled={remainingCarryOverBalance <= 0}
                         >
-                          Saldo N-1 ({remainingCarryOverBalance} hari)
+                          Saldo N-1 ({carryOverBalance} hari) - Tersisa: {remainingCarryOverBalance} hari
                         </Button>
                         <Button
                           type="button"
@@ -1566,11 +1567,12 @@ export function LeaveRequestModal({
                           onClick={() => handleSelectedLeaveBalanceChange("current")}
                           disabled={remainingCurrentYearBalance <= 0}
                         >
-                          Saldo Tahun Ini ({remainingCurrentYearBalance} hari)
+                          Saldo Tahun Ini ({initialBalance} hari) - Tersisa: {remainingCurrentYearBalance} hari
                         </Button>
                       </div>
                       <div className="text-xs text-blue-600 mt-2">
-                        Atau isi manual di tabel di bawah ini
+                        Pilih salah satu untuk mengisi otomatis, atau isi manual di tabel di bawah ini.
+                        Angka dalam kurung adalah saldo tersedia, "Tersisa" adalah saldo yang masih bisa digunakan.
                       </div>
                     </div>
 
@@ -1589,7 +1591,7 @@ export function LeaveRequestModal({
                               {new Date().getFullYear() - 2}
                             </td>
                             <td className="px-2 py-1 border">
-                              {remainingTwoYearsAgoBalance} hari
+                              {twoYearsAgoBalance} hari
                             </td>
                             <td className="px-2 py-1 border">
                               <Input
@@ -1613,7 +1615,7 @@ export function LeaveRequestModal({
                               {new Date().getFullYear() - 1}
                             </td>
                             <td className="px-2 py-1 border">
-                              {remainingCarryOverBalance} hari
+                              {carryOverBalance} hari
                             </td>
                             <td className="px-2 py-1 border">
                               <Input
@@ -1637,7 +1639,7 @@ export function LeaveRequestModal({
                               {new Date().getFullYear()}
                             </td>
                             <td className="px-2 py-1 border">
-                              {remainingCurrentYearBalance} hari
+                              {initialBalance} hari
                             </td>
                             <td className="px-2 py-1 border">
                               <Input
@@ -1659,9 +1661,9 @@ export function LeaveRequestModal({
                           <tr className="bg-gray-50">
                             <td className="px-2 py-1 border font-medium">Total</td>
                             <td className="px-2 py-1 border font-medium">
-                              {remainingTwoYearsAgoBalance +
-                                remainingCarryOverBalance +
-                                remainingCurrentYearBalance}{" "}
+                              {twoYearsAgoBalance +
+                                carryOverBalance +
+                                initialBalance}{" "}
                               hari
                             </td>
                             <td className="px-2 py-1 border font-medium">
@@ -1690,6 +1692,21 @@ export function LeaveRequestModal({
                           </tr>
                         </tbody>
                       </table>
+                    </div>
+                    {/* Informasi saldo tersisa */}
+                    <div className="mt-3 p-3 bg-gray-50 border rounded-md">
+                      <div className="text-sm font-medium text-gray-700 mb-2">Informasi Saldo Tersisa:</div>
+                      <div className="grid grid-cols-3 gap-4 text-xs">
+                        <div>
+                          <span className="font-medium">Tahun N-2:</span> {remainingTwoYearsAgoBalance} hari tersisa
+                        </div>
+                        <div>
+                          <span className="font-medium">Tahun N-1:</span> {remainingCarryOverBalance} hari tersisa
+                        </div>
+                        <div>
+                          <span className="font-medium">Tahun Ini:</span> {remainingCurrentYearBalance} hari tersisa
+                        </div>
+                      </div>
                     </div>
                     {/* Validasi */}
                     {(() => {
@@ -1852,7 +1869,7 @@ export function LeaveRequestModal({
                       variant={formData.supervisorSigned ? "default" : "outline"}
                       className="my-2"
                     >
-                      {formData.supervisorSigned ? "TERTANDA" : "Tanda Tangan"}
+                      {formData.supervisorSigned ? "TERTANDA" : "Tanda Tangan Di Atas Nama"}
                     </Button>
                     <p className="font-medium">{formData.supervisorName}</p>
                     <p className="text-sm">NIP. {formData.supervisorNIP || "-"}</p>
@@ -1957,7 +1974,7 @@ export function LeaveRequestModal({
                     >
                       {formData.authorizedOfficerSigned
                         ? "TERTANDA"
-                        : "Tanda Tangan"}
+                        : "Tanda Tangan Di Atas Nama"}
                     </Button>
                     <p className="font-medium">
                       {formData.authorizedOfficerName || "Pilih Pejabat Berwenang"}
@@ -2014,7 +2031,7 @@ export function LeaveRequestModal({
                         (formData.workingdays > remainingBalance ||
                           formData.workingdays <= 0)) ||
                       // Nonaktifkan tombol jika ada error validasi durasi cuti
-                      (formData.validationErrors && formData.validationErrors.duration)
+                      !!formData.validationErrors.duration
                     }
                   >
                     Ajukan
@@ -2149,7 +2166,7 @@ export function LeaveRequestModal({
         title="Cari Atasan Langsung"
         description="Cari dan pilih Atasan Langsung berdasarkan nama, NIP, atau jabatan."
         items={potentialSupervisors}
-        selectedId={formData.supervisorId || null}
+        selectedId={formData.supervisorNIP || null}
         onSelect={handleSupervisorSelect}
       />
 
@@ -2168,7 +2185,7 @@ export function LeaveRequestModal({
         title="Cari Pejabat Berwenang"
         description="Cari dan pilih pejabat berwenang berdasarkan nama, NIP, atau jabatan."
         items={potentialAuthorizedOfficers}
-        selectedId={formData.authorizedOfficerId || null}
+        selectedId={formData.authorizedOfficerNIP || null}
         onSelect={handleAuthorizedOfficerSelect}
       />
     </>

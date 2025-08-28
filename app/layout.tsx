@@ -6,8 +6,8 @@ import { ClientLayout } from "./components/client-layout"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata = {
-  title: "EL-CUTI - Aplikasi Cuti Elektronik Kantor Kemenag Kota Tanjungpinang",
-  description: "aplikasi cuti elektronik kantor kemenag kota tanjungpinang",
+  title: "SIM C - Sistem Informasi Manajemen Cuti Kantor Kemenag Kota Tanjungpinang",
+  description: "Sistem Informasi Manajemen Cuti Kantor Kementerian Agama Kota Tanjungpinang",
   generator: "Prakom",
   icons: {
     icon: "/logo.png",

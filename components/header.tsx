@@ -28,7 +28,7 @@ export function Header({ title, onMenuClick, children }: HeaderProps) {
           <div className="relative w-8 h-8">
             <Image
               src="/logo.png"
-              alt="Logo EL-CUTI"
+              alt="Logo SIM C"
               fill
               className="object-contain"
               priority
