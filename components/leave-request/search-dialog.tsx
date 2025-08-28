@@ -34,7 +34,7 @@ export function SearchDialog({
     return (
       item.name.toLowerCase().includes(searchTermLower) ||
       item.position?.toLowerCase().includes(searchTermLower) ||
-      item.id.toString().includes(searchTermLower)
+      item.id.toString().includes(searchTermLower) || item.nip.toString().includes(searchTermLower)
     )
   })
 
@@ -81,7 +81,7 @@ export function SearchDialog({
                   <div>
                     <div className="font-medium">{item.name}</div>
                     <div className="text-sm text-muted-foreground">
-                      {item.position} • NIP: {item.id}
+                      {item.position} • NIP: {item.nip}
                     </div>
                   </div>
                   {selectedId === item.id && <Check className="h-5 w-5 text-green-500" />}

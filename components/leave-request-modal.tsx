@@ -102,7 +102,7 @@ export function LeaveRequestModal({
     supervisorId: null as number | null,
     supervisorName: "",
     supervisorPosition: "",
-    supervisorNIP: null as number | null,
+    supervisorNIP: "",
     supervisorSigned: false,
     supervisorSignatureDate: "",
 
@@ -110,7 +110,7 @@ export function LeaveRequestModal({
     authorizedOfficerId: null as number | null,
     authorizedOfficerName: "",
     authorizedOfficerPosition: "",
-    authorizedOfficerNIP: null as number | null,
+    authorizedOfficerNIP: "",
     authorizedOfficerSigned: false,
     authorizedOfficerSignatureDate: "",
 
@@ -2166,7 +2166,7 @@ export function LeaveRequestModal({
         title="Cari Atasan Langsung"
         description="Cari dan pilih Atasan Langsung berdasarkan nama, NIP, atau jabatan."
         items={potentialSupervisors}
-        selectedId={formData.supervisorNIP || null}
+        selectedId={formData.supervisorId || null}
         onSelect={handleSupervisorSelect}
       />
 
@@ -2185,7 +2185,7 @@ export function LeaveRequestModal({
         title="Cari Pejabat Berwenang"
         description="Cari dan pilih pejabat berwenang berdasarkan nama, NIP, atau jabatan."
         items={potentialAuthorizedOfficers}
-        selectedId={formData.authorizedOfficerNIP || null}
+        selectedId={formData.authorizedOfficerId || null}
         onSelect={handleAuthorizedOfficerSelect}
       />
     </>
