@@ -29,7 +29,7 @@ const leaveRequestSchema = z.object({
   used_carry_over_days: z.number().optional(),
   used_current_year_days: z.number().optional(),
   used_n2_year: z.number().optional(),
-  file_lampiran: z.string().default(""),
+  file_lampiran: z.string().nullable().optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -412,7 +412,7 @@ export async function POST(request: NextRequest) {
       used_current_year_days: usedCurrentYear,
       used_n2_year: usedTwoYearsAgo,
       leave_year: currentYear,
-      file_lampiran: leaveRequestData.file_lampiran || null,
+      file_lampiran: leaveRequestData.file_lampiran,
     };
 
     console.log("Data yang akan disimpan ke database:", {

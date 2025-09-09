@@ -47,9 +47,10 @@ export function LeaveBalanceInfo({
   const twoYearsAgo = currentYear - 2;
 
   // Ambil saldo dari leave_balance di tabel pegawai
-  const currentYearBalance = user.leave_balance[currentYear.toString()] || 0;
-  const previousYearBalance = user.leave_balance[previousYear.toString()] || 0;
-  const twoYearsAgoBalance = user.leave_balance[twoYearsAgo.toString()] || 0;
+  // Sesuaikan dengan logika backend: default current year ke 12, cap previous years ke 6
+  const currentYearBalance = user.leave_balance[currentYear.toString()] || 12;
+  const previousYearBalance = Math.min(6, user.leave_balance[previousYear.toString()] || 0);
+  const twoYearsAgoBalance = Math.min(6, user.leave_balance[twoYearsAgo.toString()] || 0);
   const totalBalance = currentYearBalance + previousYearBalance + twoYearsAgoBalance;
 
   // Gunakan input manual jika ada

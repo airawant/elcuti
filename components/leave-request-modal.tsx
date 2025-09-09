@@ -166,7 +166,7 @@ export function LeaveRequestModal({
           twoYearsAgoBalance: 0,
           remainingCarryOverBalance: 0,
           remainingTwoYearsAgoBalance: 0,
-          remainingCurrentYearBalance: 0,
+          remainingCurrentYearBalance: 12,
           remainingBalance: 12,
         };
       }
@@ -176,9 +176,10 @@ export function LeaveRequestModal({
       const twoYearsAgo = currentYear - 2;
 
       // Ambil saldo ASLI dari leave_balance (nilai yang tersedia, bukan sisa)
-      const availableCurrentYearBalance = targetUser.leave_balance[currentYear.toString()] || 0;
-      const availablePreviousYearBalance = targetUser.leave_balance[previousYear.toString()] || 0;
-      const availableTwoYearsAgoBalance = targetUser.leave_balance[twoYearsAgo.toString()] || 0;
+      // Sesuaikan dengan logika backend: default current year ke 12, cap previous years ke 6
+      const availableCurrentYearBalance = targetUser.leave_balance[currentYear.toString()] || 12;
+      const availablePreviousYearBalance = Math.min(6, targetUser.leave_balance[previousYear.toString()] || 0);
+      const availableTwoYearsAgoBalance = Math.min(6, targetUser.leave_balance[twoYearsAgo.toString()] || 0);
 
       // Hitung penggunaan cuti dari leaveRequests yang sudah disetujui
       const usedCurrentYear = leaveRequests
@@ -209,9 +210,9 @@ export function LeaveRequestModal({
         .reduce((total, req) => total + (req.used_n2_year || 0), 0);
 
       // Hitung saldo yang tersisa (setelah dikurangi penggunaan)
-      const remainingCurrentYear = Math.max(0, availableCurrentYearBalance - usedCurrentYear);
-      const remainingCarryOver = Math.max(0, availablePreviousYearBalance - usedCarryOver);
-      const remainingTwoYearsAgo = Math.max(0, availableTwoYearsAgoBalance - usedTwoYearsAgo);
+      const remainingCurrentYear = availableCurrentYearBalance
+      const remainingCarryOver = availablePreviousYearBalance
+      const remainingTwoYearsAgo =availableTwoYearsAgoBalance
       const remainingTotal = remainingCurrentYear + remainingCarryOver + remainingTwoYearsAgo;
 
       return {
@@ -1869,7 +1870,7 @@ export function LeaveRequestModal({
                       variant={formData.supervisorSigned ? "default" : "outline"}
                       className="my-2"
                     >
-                      {formData.supervisorSigned ? "TERTANDA" : "Tanda Tangan Di Atas Nama"}
+                      {formData.supervisorSigned ? "TERTANDA" : "Tanda Tangan"}
                     </Button>
                     <p className="font-medium">{formData.supervisorName}</p>
                     <p className="text-sm">NIP. {formData.supervisorNIP || "-"}</p>
@@ -1974,7 +1975,7 @@ export function LeaveRequestModal({
                     >
                       {formData.authorizedOfficerSigned
                         ? "TERTANDA"
-                        : "Tanda Tangan Di Atas Nama"}
+                        : "Tanda Tangan"}
                     </Button>
                     <p className="font-medium">
                       {formData.authorizedOfficerName || "Pilih Pejabat Berwenang"}

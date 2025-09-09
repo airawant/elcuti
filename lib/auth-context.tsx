@@ -825,8 +825,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const targetUser = users.find(u => u.id === userId);
     if (!targetUser || !targetUser.leave_balance) return 0;
 
-    // Dapatkan saldo awal
-    const initialBalance = targetUser.leave_balance[year] || 0;
+    // Dapatkan saldo awal - sesuaikan dengan logika backend
+    const currentYear = new Date().getFullYear().toString();
+    const previousYear = (new Date().getFullYear() - 1).toString();
+    const twoYearsAgo = (new Date().getFullYear() - 2).toString();
+
+    let initialBalance;
+    if (year === currentYear) {
+      initialBalance = targetUser.leave_balance[year] || 12; // Default current year to 12
+    } else if (year === previousYear || year === twoYearsAgo) {
+      initialBalance = Math.min(6, targetUser.leave_balance[year] || 0); // Cap previous years at 6
+    } else {
+      initialBalance = targetUser.leave_balance[year] || 0;
+    }
 
     // Hitung cuti yang sudah digunakan pada tahun tersebut
     const usedLeave = leaveRequests
