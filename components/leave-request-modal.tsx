@@ -903,180 +903,201 @@ export function LeaveRequestModal({
       ) {
         throw new Error("Lampiran harus diunggah untuk jenis cuti ini");
       }
-
-      // Upload file jika ada
-      let fileUrl = "";
-      if (formData.attachment) {
-        const fileName = `${user.id}_${Date.now()}_${formData.attachment.name}`;
-        const formData2 = new FormData();
-        formData2.append("file", formData.attachment);
-
-        try {
-          const uploadResponse = await fetch(
-            `/api/upload?fileName=${encodeURIComponent(fileName)}&bucket=lampiran`,
-            {
-              method: "POST",
-              body: formData2,
-            }
-          );
-
-          if (!uploadResponse.ok) {
-            throw new Error("Gagal mengunggah file");
-          }
-
-          const uploadResult = await uploadResponse.json();
-          fileUrl = uploadResult.url;
-        } catch (error) {
-          console.error("Error uploading file:", error);
-          throw new Error("Gagal mengunggah file lampiran");
-        }
-      }
-
-      // Prepare data for submission
-      const submissionData: LeaveRequestSubmission = {
-        user_id: user.id,
-        type: formData.leaveType,
-        start_date: formData.startDate,
-        end_date: formData.endDate,
-        reason: formData.leaveReason,
-        supervisor_id: formData.supervisorId,
-        authorized_officer_id: formData.authorizedOfficerId,
-        workingdays: workingDays,
-        address: formData.address,
-        phone: formData.phone,
-        status: "Pending",
-        supervisor_status: "Pending",
-        authorized_officer_status: "Pending",
-        supervisor_viewed: false,
-        link_file: fileUrl || null,
-        file_lampiran: fileUrl || null,
-        authorized_officer_viewed: false,
-        supervisor_signed: false,
-        authorized_officer_signed: false,
-        supervisor_signature_date: null,
-        authorized_officer_signature_date: null,
-        rejection_reason: null,
-        leave_year: new Date(formData.startDate).getFullYear(),
-        saldo_n2_year: twoYearsAgoBalance,
-        saldo_carry: carryOverBalance,
-        saldo_current_year: initialBalance,
-      };
-
-      // Hitung penggunaan saldo cuti berdasarkan input manual pengguna
-      if (formData.leaveType === "Cuti Tahunan") {
-        // Gunakan input manual dari pengguna
-        let usedTwoYearsAgo = formData.usedTwoYearsAgo || 0;
-        let usedCarryOver = formData.usedPrevYear || 0;
-        let usedCurrentYear = formData.usedCurrentYear || 0;
-
-        // Jika input manual kosong, gunakan logika otomatis berdasarkan pilihan
-        if (usedTwoYearsAgo === 0 && usedCarryOver === 0 && usedCurrentYear === 0) {
-          // Tentukan penggunaan saldo berdasarkan pilihan pengguna
-          switch (formData.selectedLeaveBalance) {
-            case "twoYearsAgo":
-              usedTwoYearsAgo = Math.min(remainingTwoYearsAgoBalance, workingDays);
-              break;
-            case "carryOver":
-              usedCarryOver = Math.min(remainingCarryOverBalance, workingDays);
-              break;
-            case "current":
-              usedCurrentYear = Math.min(remainingCurrentYearBalance, workingDays);
-              break;
-          }
-        }
-
-        // Validasi akan dilakukan oleh validateLeaveUsage
-        const totalUsed = usedTwoYearsAgo + usedCarryOver + usedCurrentYear;
-        console.log(
-          `Total penggunaan saldo: ${totalUsed} hari, Hari kerja: ${workingDays} hari`
-        );
-        console.log(
-          `Saldo N-2: ${remainingTwoYearsAgoBalance} hari, Penggunaan: ${usedTwoYearsAgo} hari`
-        );
-        console.log(
-          `Saldo N-1: ${remainingCarryOverBalance} hari, Penggunaan: ${usedCarryOver} hari`
-        );
-        console.log(
-          `Saldo tahun berjalan: ${remainingCurrentYearBalance} hari, Penggunaan: ${usedCurrentYear} hari`
-        );
-
-        // Tambahkan data penggunaan saldo ke submissionData
-        submissionData.used_n2_year = usedTwoYearsAgo;
-        submissionData.used_carry_over_days = usedCarryOver;
-        submissionData.used_current_year_days = usedCurrentYear;
-        submissionData.saldo_n2_year = twoYearsAgoBalance; // Saldo awal, bukan sisa
-        submissionData.saldo_carry = carryOverBalance; // Saldo awal, bukan sisa
-        submissionData.saldo_current_year = initialBalance; // Saldo awal, bukan sisa
-
-        console.log("Detail penggunaan saldo:", {
-          workingDays,
-          selectedBalance: formData.selectedLeaveBalance,
-          usedTwoYearsAgo,
-          usedCarryOver,
-          usedCurrentYear,
-          totalUsed,
-          twoYearsAgoBalance,
-          carryOverBalance,
-          initialBalance,
-          remainingTwoYearsAgoBalance,
-          remainingCarryOverBalance,
-          remainingCurrentYearBalance,
-        });
-      } else {
-        // Untuk jenis cuti selain Cuti Tahunan, set nilai penggunaan saldo ke 0
-        submissionData.used_n2_year = 0;
-        submissionData.used_carry_over_days = 0;
-        submissionData.used_current_year_days = 0;
-        submissionData.saldo_n2_year = twoYearsAgoBalance;
-        submissionData.saldo_carry = carryOverBalance;
-        submissionData.saldo_current_year = initialBalance;
-      }
-
-      // Validasi penggunaan saldo cuti
-      // Pastikan nilai yang divalidasi adalah nilai yang akan digunakan dalam submissionData
-      const usageErrors = validateLeaveUsage(
-        submissionData.used_n2_year,
-        submissionData.used_carry_over_days,
-        submissionData.used_current_year_days
-      );
-      if (usageErrors.length > 0) {
-        throw new Error(usageErrors.join("\n"));
-      }
-
-      console.log("Mengirim data permintaan cuti:", submissionData);
-
-      // Send data to API
-      const response = await fetch("/api/leave-requests", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(submissionData),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || result.message || "Gagal mengirim permintaan cuti");
-      }
-
-      // Trigger refresh event
-      window.dispatchEvent(new Event("leave-request-updated"));
-
-      toast({
-        title: "Berhasil!",
-        description: "Pengajuan cuti telah dikirim dan menunggu persetujuan.",
-      });
+      
+      // Tutup modal terlebih dahulu sebelum melakukan proses pengiriman data
       onClose();
-    } catch (err) {
-      console.error("Error submitting leave request:", err);
+      
+      // Tampilkan toast bahwa proses sedang berjalan
       toast({
-        title: "Gagal mengirim permintaan",
-        description: err instanceof Error ? err.message : "Gagal mengirim permintaan cuti",
+        title: "Mengirim pengajuan cuti...",
+        description: "Proses akan dilanjutkan di latar belakang",
+      });
+      
+      // Lanjutkan proses di background
+      setTimeout(async () => {
+        try {
+          // Upload file jika ada
+          let fileUrl = "";
+          if (formData.attachment) {
+            const fileName = `${user.id}_${Date.now()}_${formData.attachment.name}`;
+            const formData2 = new FormData();
+            formData2.append("file", formData.attachment);
+
+            try {
+              const uploadResponse = await fetch(
+                `/api/upload?fileName=${encodeURIComponent(fileName)}&bucket=lampiran`,
+                {
+                  method: "POST",
+                  body: formData2,
+                }
+              );
+
+              if (!uploadResponse.ok) {
+                throw new Error("Gagal mengunggah file");
+              }
+
+              const uploadResult = await uploadResponse.json();
+              fileUrl = uploadResult.url;
+            } catch (error) {
+              console.error("Error uploading file:", error);
+              throw new Error("Gagal mengunggah file lampiran");
+            }
+          }
+
+          // Prepare data for submission
+          const submissionData: LeaveRequestSubmission = {
+            user_id: user.id,
+            type: formData.leaveType,
+            start_date: formData.startDate,
+            end_date: formData.endDate,
+            reason: formData.leaveReason,
+            supervisor_id: formData.supervisorId,
+            authorized_officer_id: formData.authorizedOfficerId,
+            workingdays: workingDays,
+            address: formData.address,
+            phone: formData.phone,
+            status: "Pending",
+            supervisor_status: "Pending",
+            authorized_officer_status: "Pending",
+            supervisor_viewed: false,
+            link_file: fileUrl || null,
+            file_lampiran: fileUrl || null,
+            authorized_officer_viewed: false,
+            supervisor_signed: false,
+            authorized_officer_signed: false,
+            supervisor_signature_date: null,
+            authorized_officer_signature_date: null,
+            rejection_reason: null,
+            leave_year: new Date(formData.startDate).getFullYear(),
+            saldo_n2_year: twoYearsAgoBalance,
+            saldo_carry: carryOverBalance,
+            saldo_current_year: initialBalance,
+          };
+
+          // Hitung penggunaan saldo cuti berdasarkan input manual pengguna
+          if (formData.leaveType === "Cuti Tahunan") {
+            // Gunakan input manual dari pengguna
+            let usedTwoYearsAgo = formData.usedTwoYearsAgo || 0;
+            let usedCarryOver = formData.usedPrevYear || 0;
+            let usedCurrentYear = formData.usedCurrentYear || 0;
+
+            // Jika input manual kosong, gunakan logika otomatis berdasarkan pilihan
+            if (usedTwoYearsAgo === 0 && usedCarryOver === 0 && usedCurrentYear === 0) {
+              // Tentukan penggunaan saldo berdasarkan pilihan pengguna
+              switch (formData.selectedLeaveBalance) {
+                case "twoYearsAgo":
+                  usedTwoYearsAgo = Math.min(remainingTwoYearsAgoBalance, workingDays);
+                  break;
+                case "carryOver":
+                  usedCarryOver = Math.min(remainingCarryOverBalance, workingDays);
+                  break;
+                case "current":
+                  usedCurrentYear = Math.min(remainingCurrentYearBalance, workingDays);
+                  break;
+              }
+            }
+
+            // Validasi akan dilakukan oleh validateLeaveUsage
+            const totalUsed = usedTwoYearsAgo + usedCarryOver + usedCurrentYear;
+            console.log(
+              `Total penggunaan saldo: ${totalUsed} hari, Hari kerja: ${workingDays} hari`
+            );
+            console.log(
+              `Saldo N-2: ${remainingTwoYearsAgoBalance} hari, Penggunaan: ${usedTwoYearsAgo} hari`
+            );
+            console.log(
+              `Saldo N-1: ${remainingCarryOverBalance} hari, Penggunaan: ${usedCarryOver} hari`
+            );
+            console.log(
+              `Saldo tahun berjalan: ${remainingCurrentYearBalance} hari, Penggunaan: ${usedCurrentYear} hari`
+            );
+
+            // Tambahkan data penggunaan saldo ke submissionData
+            submissionData.used_n2_year = usedTwoYearsAgo;
+            submissionData.used_carry_over_days = usedCarryOver;
+            submissionData.used_current_year_days = usedCurrentYear;
+            submissionData.saldo_n2_year = twoYearsAgoBalance; // Saldo awal, bukan sisa
+            submissionData.saldo_carry = carryOverBalance; // Saldo awal, bukan sisa
+            submissionData.saldo_current_year = initialBalance; // Saldo awal, bukan sisa
+
+            console.log("Detail penggunaan saldo:", {
+              workingDays,
+              selectedBalance: formData.selectedLeaveBalance,
+              usedTwoYearsAgo,
+              usedCarryOver,
+              usedCurrentYear,
+              totalUsed,
+              twoYearsAgoBalance,
+              carryOverBalance,
+              initialBalance,
+              remainingTwoYearsAgoBalance,
+              remainingCarryOverBalance,
+              remainingCurrentYearBalance,
+            });
+          } else {
+            // Untuk jenis cuti selain Cuti Tahunan, set nilai penggunaan saldo ke 0
+            submissionData.used_n2_year = 0;
+            submissionData.used_carry_over_days = 0;
+            submissionData.used_current_year_days = 0;
+            submissionData.saldo_n2_year = twoYearsAgoBalance;
+            submissionData.saldo_carry = carryOverBalance;
+            submissionData.saldo_current_year = initialBalance;
+          }
+
+          // Validasi penggunaan saldo cuti
+          // Pastikan nilai yang divalidasi adalah nilai yang akan digunakan dalam submissionData
+          const usageErrors = validateLeaveUsage(
+            submissionData.used_n2_year,
+            submissionData.used_carry_over_days,
+            submissionData.used_current_year_days
+          );
+          if (usageErrors.length > 0) {
+            throw new Error(usageErrors.join("\n"));
+          }
+
+          console.log("Mengirim data permintaan cuti:", submissionData);
+
+          // Send data to API
+          const response = await fetch("/api/leave-requests", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(submissionData),
+          });
+
+          const result = await response.json();
+
+          if (!response.ok) {
+            throw new Error(result.error || result.message || "Gagal mengirim permintaan cuti");
+          }
+
+          // Trigger refresh event
+          window.dispatchEvent(new Event("leave-request-updated"));
+
+          toast({
+            title: "Berhasil!",
+            description: "Pengajuan cuti telah dikirim dan menunggu persetujuan.",
+          });
+        } catch (err) {
+          console.error("Error submitting leave request:", err);
+          toast({
+            title: "Gagal mengirim permintaan",
+            description: err instanceof Error ? err.message : "Gagal mengirim permintaan cuti",
+            variant: "destructive",
+          });
+        } finally {
+          setIsSubmitting(false);
+        }
+      }, 100);
+    } catch (err) {
+      console.error("Error validating form:", err);
+      toast({
+        title: "Gagal memvalidasi form",
+        description: err instanceof Error ? err.message : "Gagal memvalidasi form permintaan cuti",
         variant: "destructive",
       });
-      setError(err instanceof Error ? err.message : "Gagal mengirim permintaan cuti");
-    } finally {
+      setError(err instanceof Error ? err.message : "Gagal memvalidasi form permintaan cuti");
       setIsSubmitting(false);
     }
   };

@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     const { data: user, error } = await supabase
       .from("pegawai")
       .select(
-        "id, nip, name, role, position, workunit, email, phone, address, isapprover, isauthorizedofficer, leave_balance",
+        "id, nip, name, role, position, workunit, email, phone, address, isapprover, isauthorizedofficer, leave_balance, tipe_pengguna, masa_kerja",
       )
       .eq("id", payload.id)
       .single()

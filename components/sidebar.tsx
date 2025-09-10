@@ -32,7 +32,7 @@ interface RouteItem {
 
 export function Sidebar({ className, isAdmin = false }: SidebarProps) {
   const pathname = usePathname()
-  const { logout, user, getPendingRequestsCount } = useAuth()
+  const { user, getPendingRequestsCount } = useAuth()
 
   // Get count of unviewed requests
   const supervisorRequestsCount = getPendingRequestsCount("supervisor")
@@ -153,16 +153,7 @@ export function Sidebar({ className, isAdmin = false }: SidebarProps) {
             ))}
           </div>
         </div>
-        <div className="px-3 py-2 mt-auto">
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-red-500 hover:bg-red-50 hover:text-red-600"
-            onClick={logout}
-          >
-            <LogOut className="mr-2 h-4 w-4" />
-            Logout
-          </Button>
-        </div>
+        {/* Tombol logout telah dihapus dari sini */}
       </div>
     </div>
   )

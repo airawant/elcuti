@@ -24,6 +24,7 @@ export default function DashboardPage() {
 
   // Redirect if not logged in
   useEffect(() => {
+    console.log(user);
     if (!user) {
       router.push("/login");
     } else if (user.role === "admin") {
@@ -111,7 +112,8 @@ export default function DashboardPage() {
       });
 
     usedLeave.total = usedLeave.twoYearsAgo + usedLeave.carryOver + usedLeave.currentYear;
-    pendingLeave.total = pendingLeave.twoYearsAgo + pendingLeave.carryOver + pendingLeave.currentYear;
+    pendingLeave.total =
+      pendingLeave.twoYearsAgo + pendingLeave.carryOver + pendingLeave.currentYear;
 
     return { usedLeave, pendingLeave };
   };
@@ -128,7 +130,10 @@ export default function DashboardPage() {
       twoYearsAgo: Math.max(0, saldoDuaTahunLalu),
       carryOver: Math.max(0, saldoTahunLalu),
       currentYear: Math.max(0, saldoTahunIni),
-      total: Math.max(0, saldoDuaTahunLalu) + Math.max(0, saldoTahunLalu) + Math.max(0, saldoTahunIni),
+      total:
+        Math.max(0, saldoDuaTahunLalu) +
+        Math.max(0, saldoTahunLalu) +
+        Math.max(0, saldoTahunIni),
     };
   };
 
@@ -149,7 +154,10 @@ export default function DashboardPage() {
       </Sheet>
 
       <div className="flex-1">
-        <Header title="SIM C - Sistem Informasi Manajemen Cuti" onMenuClick={() => setIsMobileOpen(true)} />
+        <Header
+          title="SIM C - Sistem Informasi Manajemen Cuti"
+          onMenuClick={() => setIsMobileOpen(true)}
+        />
 
         <main className="p-4 md:p-6 space-y-6">
           {/* Show notification for users with pending requests to approve */}
@@ -226,12 +234,16 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-yellow-600">Sedang Diproses:</span>
-                    <span className="font-medium text-yellow-600">{pendingLeave.total} hari</span>
+                    <span className="font-medium text-yellow-600">
+                      {pendingLeave.total} hari
+                    </span>
                   </div>
                   <div className="border-t pt-2 mt-2">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Total Digunakan:</span>
-                      <span className="font-medium text-gray-800">{usedLeave.total + pendingLeave.total} hari</span>
+                      <span className="font-medium text-gray-800">
+                        {usedLeave.total + pendingLeave.total} hari
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -247,7 +259,7 @@ export default function DashboardPage() {
                   const hiddenTypes = [
                     "Cuti Di Luar Tanggungan Negara",
                     "Cuti Karena Alasan Penting",
-                    "Cuti Besar"
+                    "Cuti Besar",
                   ];
                   return !hiddenTypes.includes(type.name);
                 }
