@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Search, FileText, ListFilter } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { LeaveRequestTable } from "@/components/leave-request-table"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 
 export default function RequestApprovalPage() {
   const [isMobileOpen, setIsMobileOpen] = useState(false)
@@ -35,6 +36,9 @@ export default function RequestApprovalPage() {
       router.push("/login")
     } else if (!user.isapprover && !user.isauthorizedofficer && user.role !== "admin") {
       router.push("/dashboard")
+    } else {
+      // Fetch leave requests when component mounts and user is authenticated
+      refreshLeaveRequests();
     }
   }, [user, router])
 
@@ -94,9 +98,42 @@ export default function RequestApprovalPage() {
   }
 
   const openReviewModal = (request: any) => {
-    setSelectedRequest(request)
-    setIsModalOpen(true)
+    // Jika user memiliki peran ganda dan request memiliki properti _approverType,
+    // gunakan properti tersebut untuk menentukan approverType
+    if (request._approverType) {
+      // Buat salinan request tanpa properti _approverType
+      const { _approverType, ...requestData } = request;
+      setSelectedRequest({
+        ...requestData,
+        // Override approverType untuk modal
+        _forcedApproverType: _approverType
+      });
+      setIsModalOpen(true);
+      return;
+    }
+
+    // Jika user memiliki peran ganda (atasan dan pejabat berwenang) dan
+    // user adalah atasan dan pejabat berwenang untuk request yang sama
+    if (user.isapprover && user.isauthorizedofficer &&
+        user.id === request.supervisor_id &&
+        user.id === request.authorized_officer_id) {
+      // Tampilkan dialog pilihan peran
+      setSelectedRequest(request);
+      setIsModalOpen(true);
+      return;
+    }
+
+    // Kasus normal: user hanya memiliki satu peran atau request berbeda
+    setSelectedRequest(request);
+    setIsModalOpen(true);
   }
+
+  // Fungsi untuk refresh data permintaan cuti
+  const refreshData = async () => {
+    if (user && (user.isapprover || user.isauthorizedofficer)) {
+      await refreshLeaveRequests();
+    }
+  };
 
   const handleApprovalSubmission = async (approvalData: {
     leaveRequestId: string;
@@ -125,7 +162,7 @@ export default function RequestApprovalPage() {
       }
 
       // Refresh data after successful approval
-      await refreshLeaveRequests();
+      await refreshData();
       setIsModalOpen(false);
 
       // Tampilkan notifikasi berhasil
@@ -134,6 +171,28 @@ export default function RequestApprovalPage() {
         description: `Permohonan cuti telah ${approvalData.action === "Approved" ? "disetujui" : "ditolak"} dengan sukses`,
         variant: "default",
       });
+
+      // Jika user memiliki peran ganda dan masih ada approval yang pending,
+      // buka dialog pilihan peran lagi setelah approval pertama selesai
+      const updatedRequest = leaveRequests.find((req: any) => req.id === approvalData.leaveRequestId);
+      if (updatedRequest &&
+          user.isapprover && user.isauthorizedofficer &&
+          user.id === updatedRequest.supervisor_id &&
+          user.id === updatedRequest.authorized_officer_id) {
+
+        // Jika approval sebagai supervisor selesai dan authorized_officer masih pending
+        if (approvalData.type === "supervisor" && updatedRequest.authorized_officer_status === "Pending") {
+          setTimeout(() => {
+            openReviewModal({...updatedRequest, _approverType: "authorized_officer"});
+          }, 500);
+        }
+        // Jika approval sebagai authorized_officer selesai dan supervisor masih pending
+        else if (approvalData.type === "authorized_officer" && updatedRequest.supervisor_status === "Pending") {
+          setTimeout(() => {
+            openReviewModal({...updatedRequest, _approverType: "supervisor"});
+          }, 500);
+        }
+      }
 
       // Refresh halaman untuk memastikan data terupdate
       router.refresh();
@@ -268,14 +327,107 @@ export default function RequestApprovalPage() {
 
       {/* Review Modal */}
       {selectedRequest && (
-        <LeaveRequestModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          onSubmit={handleApprovalSubmission}
-          mode="approve"
-          requestData={selectedRequest}
-          approverType={user.id === selectedRequest.supervisor_id ? "supervisor" : "authorized_officer"}
-        />
+        <>
+          {/* Modal untuk approval sebagai supervisor */}
+          {user.isapprover && user.id === selectedRequest.supervisor_id && (
+            <LeaveRequestModal
+              isOpen={isModalOpen}
+              onClose={() => setIsModalOpen(false)}
+              onSubmit={handleApprovalSubmission}
+              mode="approve"
+              requestData={selectedRequest}
+              approverType="supervisor"
+            />
+          )}
+
+          {/* Modal untuk approval sebagai authorized officer */}
+          {user.isauthorizedofficer && user.id === selectedRequest.authorized_officer_id && (
+            <LeaveRequestModal
+              isOpen={isModalOpen}
+              onClose={() => setIsModalOpen(false)}
+              onSubmit={handleApprovalSubmission}
+              mode="approve"
+              requestData={selectedRequest}
+              approverType="authorized_officer"
+            />
+          )}
+
+          {/* Modal untuk user yang memiliki kedua peran */}
+          {isModalOpen && selectedRequest && user.isapprover && user.isauthorizedofficer &&
+           user.id === selectedRequest.supervisor_id &&
+           user.id === selectedRequest.authorized_officer_id &&
+           !selectedRequest._forcedApproverType && (
+            <Dialog open={true} onOpenChange={() => setIsModalOpen(false)}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Pilih Peran Approval</DialogTitle>
+                  <DialogDescription>
+                    Anda memiliki peran ganda sebagai atasan dan pejabat berwenang.
+                    Silakan pilih peran yang ingin Anda gunakan untuk approval ini.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex flex-col space-y-4 py-4">
+                  {selectedRequest.supervisor_status === "Pending" && (
+                    <Button
+                      onClick={() => openReviewModal({...selectedRequest, _approverType: "supervisor"})}
+                      className="w-full"
+                    >
+                      Approval sebagai Atasan Langsung
+                    </Button>
+                  )}
+                  {selectedRequest.authorized_officer_status === "Pending" && (
+                    <Button
+                      onClick={() => openReviewModal({...selectedRequest, _approverType: "authorized_officer"})}
+                      className="w-full"
+                    >
+                      Approval sebagai Pejabat Yang Berwenang
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsModalOpen(false)}
+                    className="w-full"
+                  >
+                    Batal
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
+
+          {/* Modal permintaan cuti */}
+          {isModalOpen && selectedRequest && (
+            selectedRequest._forcedApproverType ? (
+              <LeaveRequestModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSubmit={handleApprovalSubmission}
+                mode="approve"
+                requestData={selectedRequest}
+                approverType={selectedRequest._forcedApproverType}
+              />
+            ) : (
+              !user.isapprover || !user.isauthorizedofficer ||
+              user.id !== selectedRequest.supervisor_id ||
+              user.id !== selectedRequest.authorized_officer_id
+            ) && (
+              <LeaveRequestModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSubmit={handleApprovalSubmission}
+                mode="approve"
+                requestData={selectedRequest}
+                approverType={
+                  user.id === selectedRequest.supervisor_id
+                    ? "supervisor"
+                    : user.id === selectedRequest.authorized_officer_id
+                    ? "authorized_officer"
+                    : ""
+                }
+              />
+            )
+          )}
+        </>
       )}
     </div>
   )

@@ -48,7 +48,7 @@ export function LeaveBalanceInfo({
 
   // Ambil saldo dari leave_balance di tabel pegawai
   // Sesuaikan dengan logika backend: default current year ke 12, cap previous years ke 6
-  const currentYearBalance = user.leave_balance[currentYear.toString()] || 12;
+  const currentYearBalance = user.leave_balance[currentYear.toString()];
   const previousYearBalance = Math.min(6, user.leave_balance[previousYear.toString()] || 0);
   const twoYearsAgoBalance = Math.min(6, user.leave_balance[twoYearsAgo.toString()] || 0);
   const totalBalance = currentYearBalance + previousYearBalance + twoYearsAgoBalance;
@@ -137,7 +137,7 @@ export function LeaveBalanceInfo({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <div className="text-sm font-medium">Saldo Awal</div>
-          <div className="mt-1 font-medium">{currentYearBalance} hari</div>
+          <div className="text-xs text-gray-500"> ... {currentYearBalance} hari Tahun N-{currentYear}</div>
           {previousYearBalance > 0 && (
             <div className="text-xs text-gray-500">
               + {previousYearBalance} hari Tahun N-1 dari {previousYear}

@@ -76,6 +76,8 @@ export function LeaveRequestModal({
   requestData,
   approverType,
 }: LeaveRequestModalProps) {
+  // Jika requestData memiliki _forcedApproverType, gunakan nilai tersebut
+  const effectiveApproverType = requestData?._forcedApproverType || approverType;
   const { holidays, users, user, leaveRequests, calculateRemainingLeaveBalance } = useAuth();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
@@ -126,8 +128,8 @@ export function LeaveRequestModal({
 
   const [holidaysInRange, setHolidaysInRange] = useState<any[]>([]);
   const [weekendsInRange, setWeekendsInRange] = useState<Date[]>([]);
-  const [initialBalance, setInitialBalance] = useState(12);
-  const [remainingBalance, setRemainingBalance] = useState(12);
+  const [initialBalance, setInitialBalance] = useState(0);
+  const [remainingBalance, setRemainingBalance] = useState(0);
   const [carryOverBalance, setCarryOverBalance] = useState(0);
   const [twoYearsAgoBalance, setTwoYearsAgoBalance] = useState(0);
   const [remainingCarryOverBalance, setRemainingCarryOverBalance] = useState(0);
@@ -148,26 +150,26 @@ export function LeaveRequestModal({
     (userId: number) => {
       if (typeof userId !== "number")
         return {
-          initialBalance: 12,
+          initialBalance: 0,
           carryOverBalance: 0,
           twoYearsAgoBalance: 0,
           remainingCarryOverBalance: 0,
           remainingTwoYearsAgoBalance: 0,
           remainingCurrentYearBalance: 0,
-          remainingBalance: 12,
+          remainingBalance: 0,
         };
 
       // Dapatkan user
       const targetUser = users.find((u) => u.id === userId);
       if (!targetUser || !targetUser.leave_balance) {
         return {
-          initialBalance: 12,
+          initialBalance: 0,
           carryOverBalance: 0,
           twoYearsAgoBalance: 0,
           remainingCarryOverBalance: 0,
           remainingTwoYearsAgoBalance: 0,
-          remainingCurrentYearBalance: 12,
-          remainingBalance: 12,
+          remainingCurrentYearBalance: 0,
+          remainingBalance: 0,
         };
       }
 
@@ -176,8 +178,8 @@ export function LeaveRequestModal({
       const twoYearsAgo = currentYear - 2;
 
       // Ambil saldo ASLI dari leave_balance (nilai yang tersedia, bukan sisa)
-      // Sesuaikan dengan logika backend: default current year ke 12, cap previous years ke 6
-      const availableCurrentYearBalance = targetUser.leave_balance[currentYear.toString()] || 12;
+      // Tidak memberikan nilai default untuk tahun berjalan, gunakan nilai dari database atau 0
+      const availableCurrentYearBalance = targetUser.leave_balance[currentYear.toString()] || 0;
       const availablePreviousYearBalance = Math.min(6, targetUser.leave_balance[previousYear.toString()] || 0);
       const availableTwoYearsAgoBalance = Math.min(6, targetUser.leave_balance[twoYearsAgo.toString()] || 0);
 
@@ -903,16 +905,16 @@ export function LeaveRequestModal({
       ) {
         throw new Error("Lampiran harus diunggah untuk jenis cuti ini");
       }
-      
+
       // Tutup modal terlebih dahulu sebelum melakukan proses pengiriman data
       onClose();
-      
+
       // Tampilkan toast bahwa proses sedang berjalan
       toast({
         title: "Mengirim pengajuan cuti...",
         description: "Proses akan dilanjutkan di latar belakang",
       });
-      
+
       // Lanjutkan proses di background
       setTimeout(async () => {
         try {
@@ -2061,7 +2063,7 @@ export function LeaveRequestModal({
                 </>
               )}
 
-              {mode === "approve" && approverType === "supervisor" && (
+              {mode === "approve" && effectiveApproverType === "supervisor" && (
                 <>
                   <Button type="button" variant="outline" onClick={onClose}>
                     Tutup
@@ -2112,7 +2114,7 @@ export function LeaveRequestModal({
                 </>
               )}
 
-              {mode === "approve" && approverType === "authorized_officer" && (
+              {mode === "approve" && effectiveApproverType === "authorized_officer" && (
                 <>
                   <Button type="button" variant="outline" onClick={onClose}>
                     Tutup
