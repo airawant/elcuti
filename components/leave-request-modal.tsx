@@ -2035,7 +2035,11 @@ export function LeaveRequestModal({
             <div className="flex justify-end space-x-4 mt-6">
               {mode === "create" && (
                 <>
-                  <Button type="button" variant="outline" onClick={onClose}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onClose}
+                  >
                     Batal
                   </Button>
                   <Button
@@ -2065,7 +2069,11 @@ export function LeaveRequestModal({
 
               {mode === "approve" && effectiveApproverType === "supervisor" && (
                 <>
-                  <Button type="button" variant="outline" onClick={onClose}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onClose}
+                  >
                     Tutup
                   </Button>
                   {requestData?.supervisor_status === "Pending" && (
@@ -2116,7 +2124,15 @@ export function LeaveRequestModal({
 
               {mode === "approve" && effectiveApproverType === "authorized_officer" && (
                 <>
-                  <Button type="button" variant="outline" onClick={onClose}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      onClose();
+                      // Trigger refresh event
+                      window.dispatchEvent(new Event("leave-request-updated"));
+                    }}
+                  >
                     Tutup
                   </Button>
                   {requestData?.authorized_officer_status === "Pending" && (
@@ -2166,7 +2182,11 @@ export function LeaveRequestModal({
               )}
 
               {mode === "view" && (
-                <Button type="button" variant="outline" onClick={onClose}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onClose}
+                >
                   Tutup
                 </Button>
               )}
