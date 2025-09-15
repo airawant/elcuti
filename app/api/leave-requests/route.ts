@@ -212,7 +212,7 @@ export async function POST(request: NextRequest) {
     const twoYearsAgo = currentYear - 2;
 
     // Ambil saldo dari leave_balance pegawai
-    const currentYearBalance = leaveBalance[currentYear.toString()] || 12;
+    const currentYearBalance = leaveBalance[currentYear.toString()];
     const carryOverBalance = Math.min(6, leaveBalance[previousYear.toString()] || 0);
     const twoYearsAgoBalance = Math.min(6, leaveBalance[twoYearsAgo.toString()] || 0);
     console.log("Current year balance:", currentYearBalance);
@@ -373,7 +373,7 @@ export async function POST(request: NextRequest) {
         const currentYearStr = currentYear.toString();
         updatedLeaveBalance[currentYearStr] = Math.max(
           0,
-          (updatedLeaveBalance[currentYearStr] || 12) - usedCurrentYear
+          (updatedLeaveBalance[currentYearStr]) - usedCurrentYear
         );
       }
 
