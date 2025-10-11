@@ -1350,43 +1350,48 @@ export function LeaveRequestModal({
                 II. JENIS CUTI YANG DIAMBIL
               </div>
               <div className="p-4">
-                <RadioGroup
-                  value={formData.leaveType}
-                  onValueChange={(value) => handleChange("leaveType", value)}
-                  className="grid grid-cols-1 md:grid-cols-2 gap-2"
-                  disabled={mode !== "create"}
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Cuti Tahunan" id="leave-type-1" />
-                    <Label htmlFor="leave-type-1">Cuti Tahunan</Label>
+                {mode === "create" ? (
+                  <RadioGroup
+                    value={formData.leaveType}
+                    onValueChange={(value) => handleChange("leaveType", value)}
+                    className="grid grid-cols-1 md:grid-cols-2 gap-2"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="Cuti Tahunan" id="leave-type-1" />
+                      <Label htmlFor="leave-type-1">Cuti Tahunan</Label>
+                    </div>
+                    {user?.tipe_pengguna === "PPPK" && (
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="Cuti Besar" id="leave-type-2" />
+                      <Label htmlFor="leave-type-2">Cuti Besar</Label>
+                    </div>
+                    )}
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="Cuti Sakit" id="leave-type-3" />
+                      <Label htmlFor="leave-type-3">Cuti Sakit</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="Cuti Melahirkan" id="leave-type-4" />
+                      <Label htmlFor="leave-type-4">Cuti Melahirkan</Label>
+                    </div>
+                    {user?.tipe_pengguna === "PPPK" && (
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="Cuti Karena Alasan Penting" id="leave-type-5" />
+                      <Label htmlFor="leave-type-5">Cuti Karena Alasan Penting</Label>
+                    </div>
+                    )}
+                    {user?.tipe_pengguna === "PPPK" && (
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="Cuti di Luar Tanggungan Negara" id="leave-type-6" />
+                      <Label htmlFor="leave-type-6">Cuti di Luar Tanggungan Negara</Label>
+                    </div>
+                    )}
+                  </RadioGroup>
+                ) : (
+                  <div className="p-2 bg-gray-50 rounded-md">
+                    <p className="font-medium">{formData.leaveType}</p>
                   </div>
-                  {user?.tipe_pengguna === "PPPK" && (
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Cuti Besar" id="leave-type-2" />
-                    <Label htmlFor="leave-type-2">Cuti Besar</Label>
-                  </div>
-                  )}
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Cuti Sakit" id="leave-type-3" />
-                    <Label htmlFor="leave-type-3">Cuti Sakit</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Cuti Melahirkan" id="leave-type-4" />
-                    <Label htmlFor="leave-type-4">Cuti Melahirkan</Label>
-                  </div>
-                  {user?.tipe_pengguna === "PPPK" && (
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Cuti Karena Alasan Penting" id="leave-type-5" />
-                    <Label htmlFor="leave-type-5">Cuti Karena Alasan Penting</Label>
-                  </div>
-                  )}
-                  {user?.tipe_pengguna === "PPPK" && (
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Cuti di Luar Tanggungan Negara" id="leave-type-6" />
-                    <Label htmlFor="leave-type-6">Cuti di Luar Tanggungan Negara</Label>
-                  </div>
-                  )}
-                </RadioGroup>
+                )}
               </div>
             </div>
 
