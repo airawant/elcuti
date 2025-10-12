@@ -21,6 +21,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
   CheckCircle,
   XCircle,
   CalendarIcon,
@@ -28,7 +38,8 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
-  ChevronsRight
+  ChevronsRight,
+  Ban
 } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -46,7 +57,9 @@ export default function AdminLeaveRequestsPage() {
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
-  const { user, leaveRequests, users } = useAuth()
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false)
+  const [requestToCancel, setRequestToCancel] = useState<number | null>(null)
+  const { user, leaveRequests, users, updateLeaveRequestStatus, refreshLeaveRequests } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
 
@@ -90,12 +103,60 @@ export default function AdminLeaveRequestsPage() {
     setIsDialogOpen(true)
   }
 
+  const openCancelDialog = (requestId: number) => {
+    setRequestToCancel(requestId)
+    setIsCancelDialogOpen(true)
+  }
+
+  const handleCancelRequest = async () => {
+    if (!requestToCancel) return;
+
+    try {
+      const request = leaveRequests.find((r) => r.id === requestToCancel);
+      if (!request) return;
+
+      // Batalkan permintaan cuti melalui API yang akan mengembalikan saldo secara otomatis
+      // Gunakan supervisor rejection terlebih dahulu untuk memicu pemulihan saldo
+      await updateLeaveRequestStatus(
+        requestToCancel,
+        "supervisor",
+        "Rejected",
+        "Dibatalkan oleh admin"
+      );
+
+      // Refresh data permintaan cuti untuk memastikan perubahan saldo terlihat
+      await refreshLeaveRequests();
+
+      // Tutup dialog konfirmasi
+      setIsCancelDialogOpen(false);
+      setIsDialogOpen(false);
+
+      // Tampilkan notifikasi sukses
+      toast({
+        title: "Permintaan cuti dibatalkan",
+        description: "Saldo cuti telah dikembalikan sesuai dengan penggunaan: " +
+          `N-2 tahun: ${request.used_n2_year || 0} hari, ` +
+          `Carry over: ${request.used_carry_over_days || 0} hari, ` +
+          `Tahun berjalan: ${request.used_current_year_days || 0} hari`,
+      });
+    } catch (error) {
+      console.error("Error cancelling leave request:", error);
+      toast({
+        title: "Gagal membatalkan permintaan",
+        description: "Terjadi kesalahan saat membatalkan permintaan cuti",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "Approved":
         return <Badge className="bg-green-500">Disetujui</Badge>
       case "Rejected":
         return <Badge variant="destructive">Ditolak</Badge>
+      case "Cancelled":
+        return <Badge className="bg-gray-500">Dibatalkan</Badge>
       default:
         return <Badge variant="outline">Menunggu</Badge>
     }
@@ -321,9 +382,15 @@ export default function AdminLeaveRequestsPage() {
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-2">
                     <div>
+                      <p className="text-sm font-medium">ID Cuti</p>
+                      <p>{request.id}</p>
+                    </div>
+                    <div>
                       <p className="text-sm font-medium">Pegawai</p>
                       <p>{employee?.name}</p>
                     </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
                     <div>
                       <p className="text-sm font-medium">Jenis Cuti</p>
                       <p>{request.type}</p>
@@ -351,13 +418,45 @@ export default function AdminLeaveRequestsPage() {
               )
             })()}
           </div>
-          <DialogFooter className="flex">
+          <DialogFooter className="flex justify-between">
+            {(() => {
+              const request = leaveRequests.find((r) => r.id === selectedRequest);
+              const shouldShowCancelButton = request && request.status !== "Cancelled" && request.status !== "Rejected";
+              
+              return shouldShowCancelButton ? (
+                <Button 
+                  variant="destructive" 
+                  onClick={() => openCancelDialog(selectedRequest!)}
+                >
+                  <Ban className="mr-2 h-4 w-4" />
+                  Batalkan
+                </Button>
+              ) : null;
+            })()}
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
               Tutup
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Konfirmasi Dialog untuk Pembatalan */}
+      <AlertDialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Batalkan Permohonan Cuti</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin membatalkan permohonan cuti ini? Tindakan ini akan mengembalikan saldo cuti yang telah dipakai.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCancelRequest} className="bg-red-600 hover:bg-red-700">
+              Ya, Batalkan
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

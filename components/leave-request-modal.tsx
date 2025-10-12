@@ -1360,7 +1360,7 @@ export function LeaveRequestModal({
                       <RadioGroupItem value="Cuti Tahunan" id="leave-type-1" />
                       <Label htmlFor="leave-type-1">Cuti Tahunan</Label>
                     </div>
-                    {user?.tipe_pengguna === "PPPK" && (
+                    {user?.tipe_pengguna !== "PPPK" && (
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="Cuti Besar" id="leave-type-2" />
                       <Label htmlFor="leave-type-2">Cuti Besar</Label>
@@ -1374,13 +1374,13 @@ export function LeaveRequestModal({
                       <RadioGroupItem value="Cuti Melahirkan" id="leave-type-4" />
                       <Label htmlFor="leave-type-4">Cuti Melahirkan</Label>
                     </div>
-                    {user?.tipe_pengguna === "PPPK" && (
+                    {user?.tipe_pengguna !== "PPPK" && (
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="Cuti Karena Alasan Penting" id="leave-type-5" />
                       <Label htmlFor="leave-type-5">Cuti Karena Alasan Penting</Label>
                     </div>
                     )}
-                    {user?.tipe_pengguna === "PPPK" && (
+                    {user?.tipe_pengguna !== "PPPK" && (
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="Cuti di Luar Tanggungan Negara" id="leave-type-6" />
                       <Label htmlFor="leave-type-6">Cuti di Luar Tanggungan Negara</Label>
