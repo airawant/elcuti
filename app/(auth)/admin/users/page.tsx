@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Sidebar } from "@/components/sidebar";
@@ -46,13 +46,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Edit, Trash, Download, HelpCircle } from "lucide-react";
+import { Edit, Trash, Download, HelpCircle, Upload, FileDown } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { ImportCSVDialog } from "./import-csv-dialog";
 
 const userFormSchema = z.object({
   name: z.string().min(2, {
@@ -97,6 +98,7 @@ export default function AdminUsersPage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<number | null>(null);
   const { user, users, leaveRequests, addUser, updateUser, deleteUser } = useAuth();
   const router = useRouter();
@@ -391,10 +393,19 @@ export default function AdminUsersPage() {
         <main className="p-4 md:p-6 space-y-6">
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold">Daftar Pengguna</h1>
-            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-              <DialogTrigger asChild>
-                <Button>Tambah Pengguna</Button>
-              </DialogTrigger>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsImportOpen(true)}
+                className="flex items-center gap-2"
+              >
+                <Upload className="h-4 w-4" />
+                <span>Import CSV</span>
+              </Button>
+              <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>Tambah Pengguna</Button>
+                </DialogTrigger>
               <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-6">
                 <DialogHeader className="sticky top-0 bg-white z-10 pb-4 border-b">
                   <DialogTitle>Tambah Pengguna Baru</DialogTitle>
@@ -711,20 +722,23 @@ export default function AdminUsersPage() {
                   </Form>
                 </div>
               </DialogContent>
-            </Dialog>
+              </Dialog>
+            </div>
           </div>
 
           <Card>
             <CardHeader className="flex flex-row justify-between items-center">
               <CardTitle>User List</CardTitle>
-              <Button
-                variant="outline"
-                onClick={downloadUsersCSV}
-                className="flex items-center gap-2"
-              >
-                <Download className="h-4 w-4" />
-                <span>Unduh CSV</span>
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={downloadUsersCSV}
+                  className="flex items-center gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  <span>Unduh CSV</span>
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -1200,6 +1214,20 @@ export default function AdminUsersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Import CSV Dialog */}
+      <ImportCSVDialog
+        open={isImportOpen}
+        onOpenChange={setIsImportOpen}
+        onImportSuccess={() => {
+          toast({
+            title: "Import berhasil",
+            description: "Data pegawai berhasil diimport. Halaman akan dimuat ulang.",
+          });
+          // Reload page to refresh users data
+          window.location.reload();
+        }}
+      />
     </div>
   );
 }
