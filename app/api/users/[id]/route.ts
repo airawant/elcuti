@@ -25,7 +25,14 @@ const userUpdateSchema = z.object({
 
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const userId = Number.parseInt(params.id)
+    // Wait for params to be available (Next.js App Router requirement)
+    const resolvedParams = await Promise.resolve(params);
+    const userId = Number.parseInt(resolvedParams.id);
+
+    // Validate user ID
+    if (isNaN(userId) || userId <= 0) {
+      return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
+    }
     console.log("Attempting to update user with ID:", userId)
 
     const token = await getAuthCookie()
@@ -162,7 +169,14 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const userId = Number.parseInt(params.id)
+    // Wait for params to be available (Next.js App Router requirement)
+    const resolvedParams = await Promise.resolve(params);
+    const userId = Number.parseInt(resolvedParams.id);
+
+    // Validate user ID
+    if (isNaN(userId) || userId <= 0) {
+      return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
+    }
     console.log("[DELETE] Attempting to delete user with ID:", userId)
 
     const token = await getAuthCookie()
