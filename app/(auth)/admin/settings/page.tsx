@@ -104,9 +104,10 @@ export default function AdminSettingsPage() {
                 <CardDescription>
                  Perbaharui saldo cuti untuk semua pengguna berdasarkan aturan:
                   <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
-                    <li>Set Tahun Berjalan ({new Date().getFullYear()}) menjadi 12 hari jika belum diatur</li>
-                    <li>Sisa cuti tahunan maksimal 6 hari jika lebih dari itu</li>
-                    <li>Hapus tahun yang lebih lama dari tahun N-1</li>
+                    <li>Set Tahun Berjalan ({new Date().getFullYear()}) menjadi 12 hari (hanya jika belum diatur)</li>
+                    <li>Geser saldo: Tahun berjalan lama → N-1, N-1 lama → N-2</li>
+                    <li>Sisa cuti tahun sebelumnya (N-1) maksimal 6 hari</li>
+                    <li>Simpan semua tahun sebagai arsip</li>
                   </ul>
                 </CardDescription>
               </CardHeader>

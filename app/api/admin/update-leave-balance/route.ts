@@ -16,14 +16,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify admin authentication
-    const token = request.cookies.get("auth-token")?.value
+    const token = request.cookies.get("auth_token")?.value
     if (!token) {
       console.error("[API] Authentication token not found")
       return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
 
     const payload = await verifyJWT(token)
-    if (!payload || !payload.userId) {
+    if (!payload || !payload.id) {
       console.error("[API] Invalid authentication token")
       return NextResponse.json({ error: "Invalid authentication token" }, { status: 401 })
     }
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     const { data: user, error: userError } = await supabaseAdmin
       .from("pegawai")
       .select("role")
-      .eq("id", payload.userId)
+      .eq("id", payload.id)
       .single()
 
     if (userError || !user) {
@@ -45,9 +45,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Only admin can perform this action" }, { status: 403 })
     }
 
-    // Get current year and previous year
-    const currentYear = new Date().getFullYear().toString()
-    const previousYear = (new Date().getFullYear() - 1).toString()
+    // Get current year, previous year, and two years ago
+    const currentYearNum = new Date().getFullYear()
+    const currentYear = currentYearNum.toString()
+    const previousYear = (currentYearNum - 1).toString()
+    const twoYearsAgo = (currentYearNum - 2).toString()
 
     // Fetch all users
     const { data: users, error: usersError } = await supabaseAdmin
@@ -77,31 +79,40 @@ export async function POST(request: NextRequest) {
         // Initialize leave_balance if it doesn't exist
         let leaveBalance: LeaveBalanceRecord = user.leave_balance || {}
 
-        // Create a new balance object with only current and previous year
-        const newBalance: LeaveBalanceRecord = {}
-
-        // Set current year to 12 if not set
-        if (!leaveBalance[currentYear] || typeof leaveBalance[currentYear] !== 'number') {
-          newBalance[currentYear] = 12
-          updated = true
-        } else {
-          newBalance[currentYear] = leaveBalance[currentYear]
+        // Only process if current year balance doesn't exist yet
+        if (leaveBalance[currentYear] && typeof leaveBalance[currentYear] === 'number') {
+          continue // Skip this user, current year balance already exists
         }
 
-        // Set previous year to 12 if not set, cap at 6 if greater
-        if (!leaveBalance[previousYear] || typeof leaveBalance[previousYear] !== 'number') {
-          newBalance[previousYear] = 12
+        // Create a new balance object starting with existing data
+        const newBalance: LeaveBalanceRecord = { ...leaveBalance }
+
+        // Shift the balances:
+        // 1. Old previous year becomes two years ago
+        if (leaveBalance[previousYear] && typeof leaveBalance[previousYear] === 'number') {
+          newBalance[twoYearsAgo] = leaveBalance[previousYear]
           updated = true
-        } else if (leaveBalance[previousYear] > 6) {
-          newBalance[previousYear] = 6
-          stats.capped++
-          updated = true
-        } else {
-          newBalance[previousYear] = leaveBalance[previousYear]
         }
+
+        // 2. Old current year becomes previous year, capped at 6 days
+        const oldCurrentYear = (currentYearNum - 1).toString()
+        if (leaveBalance[oldCurrentYear] && typeof leaveBalance[oldCurrentYear] === 'number') {
+          const prevYearBalance = leaveBalance[oldCurrentYear]
+          if (prevYearBalance > 6) {
+            newBalance[previousYear] = 6
+            stats.capped++
+          } else {
+            newBalance[previousYear] = prevYearBalance
+          }
+          updated = true
+        }
+
+        // 3. Set current year to 12 days
+        newBalance[currentYear] = 12
+        updated = true
 
         // Only update if there were changes
-        if (updated || JSON.stringify(leaveBalance) !== JSON.stringify(newBalance)) {
+        if (updated) {
           const { error: updateError } = await supabaseAdmin
             .from("pegawai")
             .update({ leave_balance: newBalance })
