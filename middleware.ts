@@ -3,9 +3,9 @@ import { getCurrentUser } from "@/lib/auth-utils"
 
 // Define protected routes
 const adminRoutes = ["/admin", "/admin/dashboard", "/admin/users", "/admin/leave-requests", "/admin/settings"]
-const userRoutes = ["/dashboard", "/leave-requests", "/profile", "/request-approval", "/guide"]
+const userRoutes = ["/dashboard", "/leave-requests", "/profile", "/request-approval", "/guide", "/lkh"]
 const authRoutes = ["/login"]
-const protectedApiRoutes = ["/api/users", "/api/leave-requests", "/api/leave-balance"]
+const protectedApiRoutes = ["/api/users", "/api/leave-requests", "/api/leave-balance", "/api/lkh"]
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname

@@ -6,7 +6,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { LayoutDashboard, FileText, Users, Settings, LogOut, BookOpen, CheckSquare, User } from "lucide-react"
+import { LayoutDashboard, FileText, Users, Settings, LogOut, BookOpen, CheckSquare, User, ClipboardList } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { Badge } from "@/components/ui/badge"
 import Image from "next/image"
@@ -28,6 +28,7 @@ interface RouteItem {
   href: string
   icon: React.ForwardRefExoticComponent<any>
   badge?: number
+  textBadge?: string
 }
 
 export function Sidebar({ className, isAdmin = false }: SidebarProps) {
@@ -55,12 +56,19 @@ export function Sidebar({ className, isAdmin = false }: SidebarProps) {
 
   // Add approver routes if user is an approver
   if (user?.isapprover) {
-    userRoutes.push({
-      name: "Persetujuan Cuti",
-      href: "/request-approval",
-      icon: CheckSquare,
-      badge: totalPendingRequests > 0 ? totalPendingRequests : undefined,
-    })
+    userRoutes.push(
+      {
+        name: "Persetujuan Cuti",
+        href: "/request-approval",
+        icon: CheckSquare,
+        badge: totalPendingRequests > 0 ? totalPendingRequests : undefined,
+      },
+      {
+        name: "Persetujuan LKH",
+        href: "/lkh/persetujuan",
+        icon: CheckSquare,
+      }
+    )
   }
 
   // Add general routes
@@ -69,6 +77,11 @@ export function Sidebar({ className, isAdmin = false }: SidebarProps) {
       name: "Buku Panduan",
       href: "/guide",
       icon: BookOpen,
+    },
+    {
+      name: "LKH",
+      href: "/lkh",
+      icon: ClipboardList,
     },
     {
       name: "Profil",
@@ -148,6 +161,11 @@ export function Sidebar({ className, isAdmin = false }: SidebarProps) {
                   <route.icon className="mr-2 h-4 w-4" />
                   {route.name}
                   {route.badge && <Badge className="ml-2 bg-red-500 text-white">{route.badge}</Badge>}
+                  {route.textBadge && (
+                    <span className="ml-auto text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-300 rounded-full px-2 py-0.5 leading-tight">
+                      {route.textBadge}
+                    </span>
+                  )}
                 </Link>
               </Button>
             ))}
