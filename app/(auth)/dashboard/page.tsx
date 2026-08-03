@@ -24,7 +24,7 @@ export default function DashboardPage() {
 
   // Redirect if not logged in
   useEffect(() => {
-    console.log(user);
+    // console.log(user);
     if (!user) {
       router.push("/login");
     } else if (user.role === "admin") {

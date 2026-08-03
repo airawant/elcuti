@@ -310,8 +310,8 @@ function BuatLkhForm() {
       timestamp: new Date().toISOString(),
     }
 
-    console.log("[LKH API SPEC] Endpoint:", "POST https://script.google.com/macros/s/{SCRIPT_ID}/exec")
-    console.log("[LKH API SPEC] Payload:", payloadSpec)
+    // console.log("[LKH API SPEC] Endpoint:", "POST https://script.google.com/macros/s/{SCRIPT_ID}/exec")
+    // console.log("[LKH API SPEC] Payload:", payloadSpec)
 
     try {
       const internalPayload = {
@@ -349,17 +349,39 @@ function BuatLkhForm() {
       await new Promise((resolve) => setTimeout(resolve, 600))
 
       if (res.ok) {
-        toast({
-          title: status === "final" ? "Laporan Berhasil Dikirim" : "Draft Laporan Tersimpan",
-          description: `Laporan ${NAMA_BULAN[formBulan - 1]} ${formTahun} berhasil diproses.`,
-        })
+        const periodeLabel = `${NAMA_BULAN[formBulan - 1]} ${formTahun}`
+        if (editId) {
+          toast({
+            title: "Data berhasil diperbarui",
+            description:
+              status === "final"
+                ? `Laporan ${periodeLabel} berhasil dikirim untuk persetujuan.`
+                : `Draft laporan ${periodeLabel} berhasil disimpan.`,
+          })
+        } else {
+          toast({
+            title: "Data berhasil ditambahkan",
+            description:
+              status === "final"
+                ? `Laporan ${periodeLabel} berhasil dibuat dan dikirim.`
+                : `Draft laporan ${periodeLabel} berhasil dibuat.`,
+          })
+        }
         router.push("/lkh")
       } else {
         const errJson = await res.json()
-        toast({ title: "Gagal menyimpan laporan", description: errJson.error, variant: "destructive" })
+        toast({
+          title: editId ? "Gagal memperbarui data" : "Gagal menambah data",
+          description: errJson.error,
+          variant: "destructive",
+        })
       }
     } catch {
-      toast({ title: "Error", description: "Gagal terhubung ke server", variant: "destructive" })
+      toast({
+        title: editId ? "Gagal memperbarui data" : "Gagal menambah data",
+        description: "Gagal terhubung ke server",
+        variant: "destructive",
+      })
     } finally {
       setIsSubmitting(false)
     }

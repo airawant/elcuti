@@ -141,8 +141,11 @@ export default function PersetujuanLkhPage() {
 
       if (res.ok) {
         toast({
-          title: newStatus === "approved" ? "LKH Disetujui" : "LKH Ditolak",
-          description: `Laporan LKH ${selectedLaporan.pegawai?.name || ""} telah diperbarui.`,
+          title: newStatus === "approved" ? "Data berhasil diperbarui" : "Data berhasil ditolak",
+          description:
+            newStatus === "approved"
+              ? `Laporan LKH ${selectedLaporan.pegawai?.name || ""} berhasil disetujui.`
+              : `Laporan LKH ${selectedLaporan.pegawai?.name || ""} berhasil ditolak.`,
         })
         setIsDetailOpen(false)
         setSelectedLaporan(null)
@@ -150,10 +153,18 @@ export default function PersetujuanLkhPage() {
         fetchApprovalList()
       } else {
         const json = await res.json()
-        toast({ title: "Gagal memproses persetujuan", description: json.error, variant: "destructive" })
+        toast({
+          title: "Gagal memperbarui data",
+          description: json.error,
+          variant: "destructive",
+        })
       }
     } catch {
-      toast({ title: "Error", description: "Gagal memproses ke server", variant: "destructive" })
+      toast({
+        title: "Gagal memperbarui data",
+        description: "Gagal terhubung ke server",
+        variant: "destructive",
+      })
     } finally {
       setIsProcessing(false)
     }
@@ -292,7 +303,7 @@ export default function PersetujuanLkhPage() {
                         }}
                       >
                         <Eye className="h-3.5 w-3.5 mr-1.5" />
-                        Tinjau & Disetujui
+                        Tinjau & Setujui
                       </Button>
                     </div>
                   </Card>
@@ -441,16 +452,6 @@ export default function PersetujuanLkhPage() {
               Batal
             </Button>
             <div className="flex gap-2">
-              <Button
-                variant="destructive"
-                size="sm"
-                disabled={isProcessing}
-                onClick={() => handleProcessApproval("rejected")}
-                className="text-xs"
-              >
-                {isProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <XCircle className="h-3.5 w-3.5 mr-1" />}
-                Tolak
-              </Button>
               <Button
                 size="sm"
                 disabled={isProcessing}

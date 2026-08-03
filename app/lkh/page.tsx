@@ -33,6 +33,8 @@ import {
   CheckCircle2,
   Download,
   Eye,
+  Copy,
+  Link2,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
@@ -93,11 +95,23 @@ interface KartuLaporanProps {
   laporan: LaporanLKH
   onEdit: (laporan: LaporanLKH) => void
   onDelete: (id: number) => void
+  onDuplicate: (laporan: LaporanLKH) => void
   onSendPdf: (laporan: LaporanLKH) => void
   onDownloadPdf: (laporan: LaporanLKH) => void
+  onCopyPdfLink: (pdfUrl: string) => void
+  isDuplicating?: boolean
 }
 
-function KartuLaporan({ laporan, onEdit, onDelete, onSendPdf, onDownloadPdf }: KartuLaporanProps) {
+function KartuLaporan({
+  laporan,
+  onEdit,
+  onDelete,
+  onDuplicate,
+  onSendPdf,
+  onDownloadPdf,
+  onCopyPdfLink,
+  isDuplicating = false,
+}: KartuLaporanProps) {
   const [expanded, setExpanded] = useState(false)
   const jumlahBaris = laporan.kegiatan?.length ?? 0
   const isDraft = laporan.status === "draft"
@@ -150,6 +164,36 @@ function KartuLaporan({ laporan, onEdit, onDelete, onSendPdf, onDownloadPdf }: K
           </Badge>
         </div>
       </CardHeader>
+
+      {laporan.pdf_url && (
+        <CardContent className="px-5 pb-3 pt-0">
+          <div className="rounded-lg border border-emerald-100 bg-emerald-50/50 px-3 py-2.5">
+            <p className="text-[11px] font-medium text-emerald-700 uppercase tracking-wide mb-1.5">
+              Link PDF
+            </p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <a
+                href={laporan.pdf_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-emerald-700 hover:text-emerald-900 underline break-all flex items-center gap-1 min-w-0"
+              >
+                <Link2 className="h-3.5 w-3.5 shrink-0" />
+                {laporan.pdf_url}
+              </a>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onCopyPdfLink(laporan.pdf_url!)}
+                className="h-7 px-2.5 text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-100 shrink-0"
+              >
+                <Copy className="h-3 w-3 mr-1" />
+                Salin Link
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      )}
 
       {/* Pratinjau kegiatan */}
       {expanded && laporan.kegiatan && laporan.kegiatan.length > 0 && (
@@ -211,6 +255,20 @@ function KartuLaporan({ laporan, onEdit, onDelete, onSendPdf, onDownloadPdf }: K
           <Button
             variant="outline"
             size="sm"
+            onClick={() => onDuplicate(laporan)}
+            disabled={isDuplicating}
+            className="h-7 px-3 text-xs border-violet-200 text-violet-600 hover:bg-violet-50"
+          >
+            {isDuplicating ? (
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+            ) : (
+              <Copy className="h-3 w-3 mr-1" />
+            )}
+            Duplikat
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => onSendPdf(laporan)}
             className="h-7 px-3 text-xs border-blue-200 text-blue-600 hover:bg-blue-50"
           >
@@ -248,6 +306,7 @@ export default function LkhPage() {
   const [daftarLaporan, setDaftarLaporan] = useState<LaporanLKH[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showDeleteDialog, setShowDeleteDialog] = useState<number | null>(null)
+  const [duplicatingId, setDuplicatingId] = useState<number | null>(null)
 
   // Ambil daftar laporan dari API / mock local state
   const fetchLaporan = useCallback(async () => {
@@ -280,22 +339,81 @@ export default function LkhPage() {
       })
 
       if (res.ok) {
-        toast({ title: "Laporan dihapus" })
+        toast({ title: "Data berhasil dihapus" })
         fetchLaporan()
       } else {
         const json = await res.json()
-        toast({ title: "Gagal menghapus", description: json.error, variant: "destructive" })
+        toast({
+          title: "Gagal menghapus data",
+          description: json.error,
+          variant: "destructive",
+        })
       }
     } catch {
-      toast({ title: "Error", description: "Gagal menghapus laporan", variant: "destructive" })
+      toast({
+        title: "Gagal menghapus data",
+        description: "Gagal terhubung ke server",
+        variant: "destructive",
+      })
     } finally {
       setShowDeleteDialog(null)
     }
   }
 
+  // Duplikasi laporan
+  const handleDuplicate = async (laporan: LaporanLKH) => {
+    setDuplicatingId(laporan.id)
+    try {
+      const res = await fetch(`/api/lkh/${laporan.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({}),
+      })
+
+      const json = await res.json()
+
+      if (res.ok) {
+        const newLaporan = json.data as LaporanLKH
+        toast({
+          title: "Data berhasil ditambahkan",
+          description: `Salinan laporan ${NAMA_BULAN[(newLaporan.bulan ?? 1) - 1]} ${newLaporan.tahun} berhasil dibuat sebagai draft.`,
+        })
+        fetchLaporan()
+      } else {
+        toast({
+          title: "Gagal menambah data",
+          description: json.error,
+          variant: "destructive",
+        })
+      }
+    } catch {
+      toast({
+        title: "Gagal menambah data",
+        description: "Gagal terhubung ke server",
+        variant: "destructive",
+      })
+    } finally {
+      setDuplicatingId(null)
+    }
+  }
+
+  const handleCopyPdfLink = async (pdfUrl: string) => {
+    try {
+      await navigator.clipboard.writeText(pdfUrl)
+      toast({ title: "Link disalin" })
+    } catch {
+      toast({
+        title: "Gagal menyalin",
+        description: "Tidak dapat menyalin link ke clipboard.",
+        variant: "destructive",
+      })
+    }
+  }
+
   // Handle Kirim PDF
   const handleSendPdf = (laporan: LaporanLKH) => {
-    console.log("[LKH PDF ACTION] Kirim PDF untuk Laporan:", laporan)
+    // console.log("[LKH PDF ACTION] Kirim PDF untuk Laporan:", laporan)
     toast({
       title: "Kirim PDF",
       description: `Proses pengiriman PDF laporan ${NAMA_BULAN[laporan.bulan - 1]} ${laporan.tahun} disimulasikan.`,
@@ -304,10 +422,15 @@ export default function LkhPage() {
 
   // Handle Download PDF
   const handleDownloadPdf = (laporan: LaporanLKH) => {
-    console.log("[LKH PDF ACTION] Download PDF untuk Laporan:", laporan)
+    if (laporan.pdf_url) {
+      window.open(laporan.pdf_url, "_blank", "noopener,noreferrer")
+      return
+    }
+
     toast({
-      title: "Download PDF",
-      description: `Unduhan PDF laporan ${NAMA_BULAN[laporan.bulan - 1]} ${laporan.tahun} disimulasikan.`,
+      title: "PDF belum tersedia",
+      description: `PDF laporan ${NAMA_BULAN[laporan.bulan - 1]} ${laporan.tahun} belum tersedia.`,
+      variant: "destructive",
     })
   }
 
@@ -430,8 +553,11 @@ export default function LkhPage() {
                     laporan={laporan}
                     onEdit={(l) => window.location.href = `/lkh/buat?id=${l.id}`}
                     onDelete={(id) => setShowDeleteDialog(id)}
+                    onDuplicate={handleDuplicate}
                     onSendPdf={handleSendPdf}
                     onDownloadPdf={handleDownloadPdf}
+                    onCopyPdfLink={handleCopyPdfLink}
+                    isDuplicating={duplicatingId === laporan.id}
                   />
                 ))}
               </div>

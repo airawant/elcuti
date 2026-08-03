@@ -336,14 +336,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signed?: boolean,
   ) => {
     try {
-      console.log("Updating leave request status:", {
-        leaveRequestId: id,
-        action: status,
-        type: approverType,
-        rejectionReason,
-        signatureDate,
-        signed,
-      });
+      // console.log("Updating leave request status:", {
+      //   leaveRequestId: id,
+      //   action: status,
+      //   type: approverType,
+      //   rejectionReason,
+      //   signatureDate,
+      //   signed,
+      // });
 
       const response = await fetch(`/api/leave-requests`, {
         method: "PATCH",
@@ -361,11 +361,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       // Tampilkan status kode HTTP untuk membantu debugging
-      console.log(`Server response status: ${response.status} ${response.statusText}`);
+      // console.log(`Server response status: ${response.status} ${response.statusText}`);
 
       // Coba ambil respons sebagai teks terlebih dahulu
       const responseText = await response.text();
-      console.log("Raw response text:", responseText);
+      // console.log("Raw response text:", responseText);
 
       let errorData = {};
       try {
@@ -399,7 +399,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      console.log("Successfully updated leave request:", updatedRequest);
+      // console.log("Successfully updated leave request:", updatedRequest);
 
       if (updatedRequest.leaveRequest) {
         setLeaveRequests(
@@ -445,7 +445,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const addUser = async (userData: Omit<Pegawai, "id">) => {
     try {
-      console.log("Creating user with data:", { ...userData, password: "[REDACTED]" })
+      // console.log("Creating user with data:", { ...userData, password: "[REDACTED]" })
 
       // Validate required fields
       if (!userData.nip || !userData.name || !userData.role) {
@@ -463,17 +463,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       let responseData
       try {
         const text = await response.text()
-        console.log("Raw response:", text)
+        // console.log("Raw response:", text)
         responseData = JSON.parse(text)
       } catch (e) {
         console.error("Failed to parse response:", e)
         throw new Error("Invalid server response")
       }
 
-      console.log("Server response:", {
-        status: response.status,
-        data: responseData
-      })
+      // console.log("Server response:", {
+      //   status: response.status,
+      //   data: responseData
+      // })
 
       if (!response.ok) {
         const errorMessage = responseData.error || responseData.details || "An error occurred"

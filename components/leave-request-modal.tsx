@@ -248,7 +248,7 @@ export function LeaveRequestModal({
     if (!isOpen || !user) return;
 
     if (mode === "create") {
-      console.log("Initializing form data for create mode.");
+      // console.log("Initializing form data for create mode.");
       // For new requests, initialize with current user data, but preserve supervisor data if it exists
       setFormData((prev) => {
         // Simpan data supervisor yang mungkin sudah ada
@@ -350,7 +350,7 @@ export function LeaveRequestModal({
         }
       }
     } else if ((mode === "view" || mode === "approve") && requestData) {
-      console.log("Initializing form data for view/approve mode.");
+      // console.log("Initializing form data for view/approve mode.");
       // For viewing or approving existing requests, load data from requestData
       const requester = users.find((u) => u.id === requestData.user_id);
       const supervisor = users.find((u) => u.id === requestData.supervisor_id);
@@ -437,12 +437,12 @@ export function LeaveRequestModal({
   ]);
 
   useEffect(() => {
-    console.log("Form data updated:", formData);
+    // console.log("Form data updated:", formData);
   }, [formData]);
 
   // Handle form field changes
   const handleChange = (field: string, value: any) => {
-    console.log(`Changing field ${field} to`, value);
+    // console.log(`Changing field ${field} to`, value);
     setFormData((prev) => {
       const updatedData = {
         ...prev,
@@ -493,7 +493,7 @@ export function LeaveRequestModal({
     weekends: Date[],
     holidaysInRange: any[]
   ) => {
-    console.log("Updating leave calculation results:", { totalDays, workingDays });
+    // console.log("Updating leave calculation results:", { totalDays, workingDays });
 
     // Pastikan workingDays adalah angka positif
     const validWorkingDays = Math.max(0, workingDays);
@@ -555,7 +555,7 @@ export function LeaveRequestModal({
 
   // Handle supervisor selection
   const handleSupervisorSelect = (supervisorId: number) => {
-    console.log("handleSupervisorSelect called with supervisorId:", supervisorId);
+    // console.log("handleSupervisorSelect called with supervisorId:", supervisorId);
     if (!users.length) {
       console.warn("Users not loaded yet.");
       return;
@@ -569,7 +569,7 @@ export function LeaveRequestModal({
       return;
     }
 
-    console.log("Selecting supervisor:", selectedSupervisor);
+    // console.log("Selecting supervisor:", selectedSupervisor);
 
     // Segera perbarui formData dengan fungsi updater
     setFormData((prev) => {
@@ -581,7 +581,7 @@ export function LeaveRequestModal({
         supervisorPosition: selectedSupervisor.position || "",
         supervisorNIP: selectedSupervisor.nip || "",
       };
-      console.log("Updating form data with:", newData);
+      // console.log("Updating form data with:", newData);
       return newData;
     });
 
@@ -599,7 +599,7 @@ export function LeaveRequestModal({
 
   // Handle authorized officer selection
   const handleAuthorizedOfficerSelect = (officerId: number) => {
-    console.log("handleAuthorizedOfficerSelect called with officerId:", officerId);
+    // console.log("handleAuthorizedOfficerSelect called with officerId:", officerId);
     if (!users.length) {
       console.warn("Users not loaded yet.");
       return;
@@ -612,7 +612,7 @@ export function LeaveRequestModal({
       return;
     }
 
-    console.log("Selecting authorized officer:", selectedOfficer);
+    // console.log("Selecting authorized officer:", selectedOfficer);
 
     // Segera perbarui formData dengan fungsi updater
     setFormData((prev) => {
@@ -624,7 +624,7 @@ export function LeaveRequestModal({
         authorizedOfficerPosition: selectedOfficer.position || "",
         authorizedOfficerNIP: selectedOfficer.nip || "",
       };
-      console.log("Updating authorized officer form data with:", newData);
+      // console.log("Updating authorized officer form data with:", newData);
       return newData;
     });
 
@@ -642,7 +642,7 @@ export function LeaveRequestModal({
 
   // Handle supervisor NIP input
   const handleSupervisorNIPInput = (nip: string) => {
-    console.log("Handling supervisor NIP input:", nip);
+    // console.log("Handling supervisor NIP input:", nip);
     setFormData((prev) => ({
       ...prev,
       supervisorNIP: nip,
@@ -651,7 +651,7 @@ export function LeaveRequestModal({
     // Find supervisor by NIP
     const supervisor = users.find((u) => u.id.toString() === nip && u.isapprover === true);
     if (supervisor) {
-      console.log("Supervisor found by NIP:", supervisor);
+      // console.log("Supervisor found by NIP:", supervisor);
       setFormData((prev) => ({
         ...prev,
         supervisorId: supervisor.id,
@@ -659,7 +659,7 @@ export function LeaveRequestModal({
         supervisorPosition: supervisor.position || "",
       }));
     } else {
-      console.log("No supervisor found by NIP.");
+      // console.log("No supervisor found by NIP.");
       setFormData((prev) => ({
         ...prev,
         supervisorId: null,
@@ -671,7 +671,7 @@ export function LeaveRequestModal({
 
   // Handle authorized officer NIP input
   const handleAuthorizedOfficerNIPInput = (nip: string) => {
-    console.log("Handling authorized officer NIP input:", nip);
+    // console.log("Handling authorized officer NIP input:", nip);
     setFormData((prev) => ({
       ...prev,
       authorizedOfficerNIP: nip,
@@ -680,7 +680,7 @@ export function LeaveRequestModal({
     // Find authorized officer by NIP
     const officer = users.find((u) => u.id.toString() === nip && u.isauthorizedofficer);
     if (officer) {
-      console.log("Authorized officer found by NIP:", officer);
+      // console.log("Authorized officer found by NIP:", officer);
       setFormData((prev) => ({
         ...prev,
         authorizedOfficerId: officer.id,
@@ -688,7 +688,7 @@ export function LeaveRequestModal({
         authorizedOfficerPosition: officer.position || "",
       }));
     } else {
-      console.log("No authorized officer found by NIP.");
+      // console.log("No authorized officer found by NIP.");
       setFormData((prev) => ({
         ...prev,
         authorizedOfficerId: null,
@@ -1001,18 +1001,18 @@ export function LeaveRequestModal({
 
             // Validasi akan dilakukan oleh validateLeaveUsage
             const totalUsed = usedTwoYearsAgo + usedCarryOver + usedCurrentYear;
-            console.log(
-              `Total penggunaan saldo: ${totalUsed} hari, Hari kerja: ${workingDays} hari`
-            );
-            console.log(
-              `Saldo N-2: ${remainingTwoYearsAgoBalance} hari, Penggunaan: ${usedTwoYearsAgo} hari`
-            );
-            console.log(
-              `Saldo N-1: ${remainingCarryOverBalance} hari, Penggunaan: ${usedCarryOver} hari`
-            );
-            console.log(
-              `Saldo tahun berjalan: ${remainingCurrentYearBalance} hari, Penggunaan: ${usedCurrentYear} hari`
-            );
+            // console.log(
+            //   `Total penggunaan saldo: ${totalUsed} hari, Hari kerja: ${workingDays} hari`
+            // );
+            // console.log(
+            //   `Saldo N-2: ${remainingTwoYearsAgoBalance} hari, Penggunaan: ${usedTwoYearsAgo} hari`
+            // );
+            // console.log(
+            //   `Saldo N-1: ${remainingCarryOverBalance} hari, Penggunaan: ${usedCarryOver} hari`
+            // );
+            // console.log(
+            //   `Saldo tahun berjalan: ${remainingCurrentYearBalance} hari, Penggunaan: ${usedCurrentYear} hari`
+            // );
 
             // Tambahkan data penggunaan saldo ke submissionData
             submissionData.used_n2_year = usedTwoYearsAgo;
@@ -1022,20 +1022,20 @@ export function LeaveRequestModal({
             submissionData.saldo_carry = carryOverBalance; // Saldo awal, bukan sisa
             submissionData.saldo_current_year = initialBalance; // Saldo awal, bukan sisa
 
-            console.log("Detail penggunaan saldo:", {
-              workingDays,
-              selectedBalance: formData.selectedLeaveBalance,
-              usedTwoYearsAgo,
-              usedCarryOver,
-              usedCurrentYear,
-              totalUsed,
-              twoYearsAgoBalance,
-              carryOverBalance,
-              initialBalance,
-              remainingTwoYearsAgoBalance,
-              remainingCarryOverBalance,
-              remainingCurrentYearBalance,
-            });
+            // console.log("Detail penggunaan saldo:", {
+            //   workingDays,
+            //   selectedBalance: formData.selectedLeaveBalance,
+            //   usedTwoYearsAgo,
+            //   usedCarryOver,
+            //   usedCurrentYear,
+            //   totalUsed,
+            //   twoYearsAgoBalance,
+            //   carryOverBalance,
+            //   initialBalance,
+            //   remainingTwoYearsAgoBalance,
+            //   remainingCarryOverBalance,
+            //   remainingCurrentYearBalance,
+            // });
           } else {
             // Untuk jenis cuti selain Cuti Tahunan, set nilai penggunaan saldo ke 0
             submissionData.used_n2_year = 0;
@@ -1057,7 +1057,7 @@ export function LeaveRequestModal({
             throw new Error(usageErrors.join("\n"));
           }
 
-          console.log("Mengirim data permintaan cuti:", submissionData);
+          // console.log("Mengirim data permintaan cuti:", submissionData);
 
           // Send data to API
           const response = await fetch("/api/leave-requests", {
@@ -1151,7 +1151,7 @@ export function LeaveRequestModal({
 
   // Handle approval/rejection by an authorized officer
   const handleAuthorizedOfficerAction = (status: "Approved" | "Rejected") => {
-    console.log("Handling authorized officer action:", status);
+    // console.log("Handling authorized officer action:", status);
     if (!formData.authorizedOfficerSigned) {
       toast({
         title: "Tanda tangan diperlukan",
@@ -1472,7 +1472,7 @@ export function LeaveRequestModal({
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        console.log("Opening file lampiran:", requestData.file_lampiran);
+                        // console.log("Opening file lampiran:", requestData.file_lampiran);
                         window.open(requestData.file_lampiran, "_blank");
                       }}
                       className="flex items-center gap-2"
@@ -2205,10 +2205,10 @@ export function LeaveRequestModal({
         isOpen={isSupervisorDialogOpen}
         onOpenChange={(open) => {
           if (!open && formData.supervisorId) {
-            console.log(
-              "Supervisor dialog closed, preserving selected supervisor:",
-              formData.supervisorId
-            );
+            // console.log(
+            //   "Supervisor dialog closed, preserving selected supervisor:",
+            //   formData.supervisorId
+            // );
           }
           setIsSupervisorDialogOpen(open);
         }}
@@ -2224,10 +2224,10 @@ export function LeaveRequestModal({
         isOpen={isAuthorizedOfficerDialogOpen}
         onOpenChange={(open) => {
           if (!open && formData.authorizedOfficerId) {
-            console.log(
-              "Authorized officer dialog closed, preserving selected officer:",
-              formData.authorizedOfficerId
-            );
+            // console.log(
+            //   "Authorized officer dialog closed, preserving selected officer:",
+            //   formData.authorizedOfficerId
+            // );
           }
           setIsAuthorizedOfficerDialogOpen(open);
         }}

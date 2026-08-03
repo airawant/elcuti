@@ -215,7 +215,7 @@ export default function AdminUsersPage() {
 
   const handleAddUser = (values: z.infer<typeof userFormSchema>) => {
     // Use snake_case for API request
-    console.log("Original values for add user:", values);
+    // console.log("Original values for add user:", values);
 
     const apiValues = {
       ...values,
@@ -225,7 +225,7 @@ export default function AdminUsersPage() {
       masa_kerja: values.masa_kerja || undefined,
     };
 
-    console.log("Transformed values for API:", apiValues);
+    // console.log("Transformed values for API:", apiValues);
 
     addUser(apiValues);
     toast({
@@ -245,7 +245,7 @@ export default function AdminUsersPage() {
       }
 
       // Rename fields to match the API expectations
-      console.log("Original values for update:", updateValues);
+      // console.log("Original values for update:", updateValues);
 
       // Use snake_case for API request
       const apiValues = {
@@ -256,7 +256,7 @@ export default function AdminUsersPage() {
         masa_kerja: updateValues.masa_kerja || undefined,
       };
 
-      console.log("Transformed values for API:", apiValues);
+      // console.log("Transformed values for API:", apiValues);
 
       updateUser(selectedUser, apiValues);
       toast({

@@ -73,22 +73,22 @@ export function LeaveRequestTable({ userId }: LeaveRequestTableProps) {
         setLoading(true)
         setError(null)
 
-        console.log("Memulai fetch data permintaan cuti...")
+        // console.log("Memulai fetch data permintaan cuti...")
         const response = await fetch("/api/leave-requests")
-        console.log("Response status:", response.status)
+        // console.log("Response status:", response.status)
 
         const data = await response.json()
-        console.log("Response data:", data)
+        // console.log("Response data:", data)
 
         if (!response.ok) {
           throw new Error(data.error || "Gagal mengambil data permintaan cuti")
         }
 
         if (Array.isArray(data)) {
-          console.log("Jumlah data yang diterima:", data.length)
-          console.log("Sample data pertama:", data[0])
+          // console.log("Jumlah data yang diterima:", data.length)
+          // console.log("Sample data pertama:", data[0])
         } else {
-          console.log("Data bukan array:", data)
+          // console.log("Data bukan array:", data)
         }
 
         setLocalLeaveRequests(Array.isArray(data) ? data : [])
@@ -121,48 +121,48 @@ export function LeaveRequestTable({ userId }: LeaveRequestTableProps) {
     ? localLeaveRequests.filter((req) => req.user_id === userId)
     : localLeaveRequests.filter((req) => {
         if (!user) {
-          console.log("User tidak ditemukan, mengembalikan false");
+          // console.log("User tidak ditemukan, mengembalikan false");
           return false;
         }
 
-        console.log("Data user:", {
-          id: user.id,
-          role: user.role,
-          isapprover: user.isapprover,
-          isauthorizedofficer: user.isauthorizedofficer
-        });
+        // console.log("Data user:", {
+        //   id: user.id,
+        //   role: user.role,
+        //   isapprover: user.isapprover,
+        //   isauthorizedofficer: user.isauthorizedofficer
+        // });
 
         // Log semua permintaan yang ada
-        console.log("Semua permintaan cuti:", localLeaveRequests.map(req => ({
-          id: req.id,
-          user_id: req.user_id,
-          supervisor_id: req.supervisor_id,
-          authorized_officer_id: req.authorized_officer_id,
-          status: req.status,
-          supervisor_status: req.supervisor_status,
-          authorized_officer_status: req.authorized_officer_status
-        })));
+        // console.log("Semua permintaan cuti:", localLeaveRequests.map(req => ({
+        //   id: req.id,
+        //   user_id: req.user_id,
+        //   supervisor_id: req.supervisor_id,
+        //   authorized_officer_id: req.authorized_officer_id,
+        //   status: req.status,
+        //   supervisor_status: req.supervisor_status,
+        //   authorized_officer_status: req.authorized_officer_status
+        // })));
 
         // Untuk supervisor, tampilkan permintaan yang memerlukan persetujuan supervisor
         if (user.isapprover) {
-          console.log("User adalah supervisor, memeriksa permintaan yang perlu disetujui");
+          // console.log("User adalah supervisor, memeriksa permintaan yang perlu disetujui");
           const supervisorRequests = localLeaveRequests.filter(req => {
             const isMatch =
               req.supervisor_id === user.id &&
               req.supervisor_status === "Pending" &&
               req.status === "Pending";
 
-            console.log(`Permintaan ID ${req.id}:`, {
-              matches: isMatch,
-              supervisor_check: req.supervisor_id === user.id,
-              status_check: req.status === "Pending",
-              supervisor_status_check: req.supervisor_status === "Pending"
-            });
+            // console.log(`Permintaan ID ${req.id}:`, {
+            //   matches: isMatch,
+            //   supervisor_check: req.supervisor_id === user.id,
+            //   status_check: req.status === "Pending",
+            //   supervisor_status_check: req.supervisor_status === "Pending"
+            // });
 
             return isMatch;
           });
 
-          console.log("Permintaan yang cocok untuk supervisor:", supervisorRequests);
+          // console.log("Permintaan yang cocok untuk supervisor:", supervisorRequests);
           return (
             req.supervisor_id === user.id &&
             req.supervisor_status === "Pending" &&
@@ -174,24 +174,24 @@ export function LeaveRequestTable({ userId }: LeaveRequestTableProps) {
         // 1. Memerlukan persetujuan officer
         // 2. Sudah disetujui oleh supervisor
         if (user.isauthorizedofficer) {
-          console.log("User adalah authorized officer, memeriksa permintaan yang perlu disetujui");
+          // console.log("User adalah authorized officer, memeriksa permintaan yang perlu disetujui");
           const officerRequests = localLeaveRequests.filter(req => {
             const isMatch =
               req.authorized_officer_id === user.id &&
               req.authorized_officer_status === "Pending" &&
               req.supervisor_status === "Approved";
 
-            console.log(`Permintaan ID ${req.id}:`, {
-              matches: isMatch,
-              officer_check: req.authorized_officer_id === user.id,
-              officer_status_check: req.authorized_officer_status === "Pending",
-              supervisor_status_check: req.supervisor_status === "Approved"
-            });
+            // console.log(`Permintaan ID ${req.id}:`, {
+            //   matches: isMatch,
+            //   officer_check: req.authorized_officer_id === user.id,
+            //   officer_status_check: req.authorized_officer_status === "Pending",
+            //   supervisor_status_check: req.supervisor_status === "Approved"
+            // });
 
             return isMatch;
           });
 
-          console.log("Permintaan yang cocok untuk authorized officer:", officerRequests);
+          // console.log("Permintaan yang cocok untuk authorized officer:", officerRequests);
           return (
             req.authorized_officer_id === user.id &&
             req.authorized_officer_status === "Pending" &&
@@ -201,25 +201,25 @@ export function LeaveRequestTable({ userId }: LeaveRequestTableProps) {
 
         // Untuk admin, tampilkan semua
         if (user.role === "admin") {
-          console.log("User adalah admin, menampilkan semua permintaan");
+          // console.log("User adalah admin, menampilkan semua permintaan");
           return true;
         }
 
-        console.log("User tidak memiliki role khusus, tidak ada permintaan yang ditampilkan");
+        // console.log("User tidak memiliki role khusus, tidak ada permintaan yang ditampilkan");
         return false;
     });
 
-  console.log("Jumlah permintaan yang akan ditampilkan:", userRequests.length);
+  // console.log("Jumlah permintaan yang akan ditampilkan:", userRequests.length);
   if (userRequests.length > 0) {
-    console.log("Detail permintaan yang akan ditampilkan:", userRequests.map(req => ({
-      id: req.id,
-      user_id: req.user_id,
-      supervisor_id: req.supervisor_id,
-      authorized_officer_id: req.authorized_officer_id,
-      status: req.status,
-      supervisor_status: req.supervisor_status,
-      authorized_officer_status: req.authorized_officer_status
-    })));
+    // console.log("Detail permintaan yang akan ditampilkan:", userRequests.map(req => ({
+    //   id: req.id,
+    //   user_id: req.user_id,
+    //   supervisor_id: req.supervisor_id,
+    //   authorized_officer_id: req.authorized_officer_id,
+    //   status: req.status,
+    //   supervisor_status: req.supervisor_status,
+    //   authorized_officer_status: req.authorized_officer_status
+    // })));
   }
 
   // Filter berdasarkan pencarian
