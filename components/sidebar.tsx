@@ -82,6 +82,7 @@ export function Sidebar({ className, isAdmin = false }: SidebarProps) {
       name: "LKH",
       href: "/lkh",
       icon: ClipboardList,
+      textBadge: "coming soon"
     },
     {
       name: "Profil",

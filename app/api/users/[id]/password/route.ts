@@ -1,23 +1,22 @@
 import { NextRequest, NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import { createClient } from "@supabase/supabase-js"
 import { hashPassword, comparePasswords, verifyJWT } from "@/lib/auth-utils"
 import { supabaseAdmin } from "@/lib/supabase"
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Tunggu params.id sebelum menggunakannya
-    const id = await params.id
+    const { id } = await params
     const userId = parseInt(id)
     if (isNaN(userId)) {
       return NextResponse.json({ message: "ID pengguna tidak valid" }, { status: 400 })
     }
 
     // Verifikasi session menggunakan cookie
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     const authToken = cookieStore.get("auth_token")?.value
 
     if (!authToken) {
