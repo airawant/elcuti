@@ -243,14 +243,25 @@ function BuatLkhForm() {
     }
   }, [user, editId])
 
-  // Update baris ketika Bulan/Tahun berubah pada Form Baru
+  // Update baris ketika Bulan/Tahun berubah
   const handlePeriodeChange = (newBulan: number, newTahun: number) => {
     setFormBulan(newBulan)
     setFormTahun(newTahun)
-    if (!editId) {
-      const generated = generateDaysForMonth(newBulan, newTahun, leaveRequests)
-      setFormKegiatan(generated)
-    }
+
+    // Selalu regenerasi hari sesuai bulan baru
+    // Pertahankan isi yang sudah diketik berdasarkan urutan posisi baris
+    const prevKegiatan = formKegiatan
+    const generated = generateDaysForMonth(newBulan, newTahun, leaveRequests)
+    const mapped = generated.map((row, idx) => {
+      const prev = prevKegiatan[idx]
+      if (!prev) return row
+      return {
+        ...row,
+        rencana_hasil_kerja: prev.isLeave ? row.rencana_hasil_kerja : prev.rencana_hasil_kerja,
+        realisasi: prev.isLeave ? row.realisasi : prev.realisasi,
+      }
+    })
+    setFormKegiatan(mapped)
   }
 
   // Update cell textarea
@@ -280,14 +291,15 @@ function BuatLkhForm() {
       ? { nama: selectedAtasanObj.name, nip: selectedAtasanObj.nip, jabatan: selectedAtasanObj.position }
       : { nama: "", nip: "", jabatan: "" }
 
-    // Filter kegiatan yang diisi (atau tanggal cuti)
+    // Filter kegiatan yang diisi (atau tanggal cuti), pertahankan urutan asli
     const kegiatanPayload = formKegiatan
+      .map((k, idx) => ({ ...k, originalIdx: idx + 1 }))
       .filter((k) => k.rencana_hasil_kerja.trim() || k.realisasi.trim() || k.isLeave)
-      .map((k, idx) => ({
+      .map((k) => ({
         tanggal: k.tanggal,
         rencana_hasil_kerja: k.rencana_hasil_kerja,
         realisasi: k.realisasi,
-        urutan: idx + 1,
+        urutan: k.originalIdx,
       }))
 
     const payloadSpec = {
@@ -509,7 +521,7 @@ function BuatLkhForm() {
                             row.isLeave
                               ? "bg-amber-50/80 hover:bg-amber-100/80 transition-colors"
                               : row.isWeekend
-                                ? "bg-gray-100/70 text-gray-400"
+                                ? "bg-red-100/70 text-red-400"
                                 : "hover:bg-teal-50/30 transition-colors"
                           }
                         >
@@ -529,7 +541,7 @@ function BuatLkhForm() {
                               </span>
                             )}
                             {row.isWeekend && !row.isLeave && (
-                              <span className="mt-1 inline-block text-[9px] text-gray-400 italic">
+                              <span className="mt-1 inline-block px-1.5 py-0.5 rounded bg-red-100 text-[9px] text-red-600 font-bold">
                                 Libur
                               </span>
                             )}
@@ -541,7 +553,7 @@ function BuatLkhForm() {
                               value={row.rencana_hasil_kerja}
                               onChange={(e) => updateKegiatanCell(idx, "rencana_hasil_kerja", e.target.value)}
                               placeholder={row.isLeave ? `Sedang ${row.leaveType}` : row.isWeekend ? "Hari Libur..." : "Ketik rencana hasil kerja..."}
-                              disabled={row.isLeave}
+                              // disabled={row.isLeave}
                               className={`w-full min-h-[42px] text-xs leading-relaxed p-2 resize-y border-none focus:ring-1 focus:ring-teal-500 rounded-none bg-transparent ${row.isLeave ? "text-amber-800 font-medium italic opacity-90" : ""
                                 }`}
                             />
@@ -553,7 +565,7 @@ function BuatLkhForm() {
                               value={row.realisasi}
                               onChange={(e) => updateKegiatanCell(idx, "realisasi", e.target.value)}
                               placeholder={row.isLeave ? `Sedang ${row.leaveType}` : row.isWeekend ? "Hari Libur..." : "Ketik realisasi kegiatan..."}
-                              disabled={row.isLeave}
+                              // disabled={row.isLeave}
                               className={`w-full min-h-[42px] text-xs leading-relaxed p-2 resize-y border-none focus:ring-1 focus:ring-teal-500 rounded-none bg-transparent ${row.isLeave ? "text-amber-800 font-medium italic opacity-90" : ""
                                 }`}
                             />

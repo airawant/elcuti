@@ -359,13 +359,27 @@ export async function POST(
     }
 
     if (sourceKegiatan && sourceKegiatan.length > 0) {
-      const kegiatanRows = sourceKegiatan.map((k, idx) => ({
-        laporan_id: newLaporan.id,
-        tanggal: k.tanggal,
-        uraian_tugas: k.uraian_tugas,
-        realisasi: k.realisasi,
-        urutan: k.urutan ?? idx + 1,
-      }))
+      // Remap tanggal ke bulan/tahun target berdasarkan nomor hari (urutan),
+      // bukan copy tanggal mentah — agar isi tetap muncul saat form edit dibuka
+      const daysInTargetMonth = new Date(targetTahun, targetBulan, 0).getDate()
+      const monthStr = String(targetBulan).padStart(2, "0")
+
+      const kegiatanRows = sourceKegiatan.map((k, idx) => {
+        // Ambil nomor hari dari tanggal sumber
+        const sourceDayNum = new Date(k.tanggal + "T00:00:00").getDate()
+        // Jika hari melebihi jumlah hari bulan target (misal 31 → Feb), pakai hari terakhir
+        const targetDayNum = Math.min(sourceDayNum, daysInTargetMonth)
+        const dayStr = String(targetDayNum).padStart(2, "0")
+        const newTanggal = `${targetTahun}-${monthStr}-${dayStr}`
+
+        return {
+          laporan_id: newLaporan.id,
+          tanggal: newTanggal,
+          uraian_tugas: k.uraian_tugas,
+          realisasi: k.realisasi,
+          urutan: k.urutan ?? idx + 1,
+        }
+      })
 
       const { error: copyKegiatanError } = await supabaseAdmin
         .from("lkh_kegiatan")
